@@ -156,7 +156,7 @@ export function buildVilla(scene, colliders) {
     }
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), matFloor);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set((r.minX + r.maxX) / 2, 0.02, (r.minZ + r.maxZ) / 2);
+    floor.position.set((r.minX + r.maxX) / 2, 0.012, (r.minZ + r.maxZ) / 2);
     floor.receiveShadow = true;
     scene.add(floor);
   }
@@ -168,7 +168,7 @@ export function buildVilla(scene, colliders) {
     new THREE.MeshBasicMaterial({ color: 0xf0ede6 })
   );
   ceil.rotation.x = Math.PI / 2;
-  ceil.position.set(0, WALL_H, 0);
+  ceil.position.set(0, WALL_H - 0.03, 0);   // 低于楼板底面2.9，避免共面闪烁
   ceil.receiveShadow = true;
   scene.add(ceil);
 

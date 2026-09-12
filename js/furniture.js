@@ -35,6 +35,19 @@ function legs4(g, w, d, h, color, t = 0.06) {
     box(g, t, h, t, color, sx * (w / 2 - t), h / 2, sz * (d / 2 - t));
 }
 
+// 抽屉：面板+真实箱体（底/左右侧/后板），滑动时不再悬空
+function drawerBox(w, h, d, frontColor, x, y, z) {
+  const dg = new THREE.Group();
+  const body = 0x8a6a45;
+  box(dg, w, h, 0.035, frontColor, 0, 0, d / 2 - 0.017);              // 前面板
+  box(dg, w - 0.05, 0.02, d - 0.08, body, 0, -h / 2 + 0.025, -0.02);  // 底
+  box(dg, 0.02, h - 0.05, d - 0.08, body, -w / 2 + 0.025, 0, -0.02);  // 左侧
+  box(dg, 0.02, h - 0.05, d - 0.08, body, w / 2 - 0.025, 0, -0.02);   // 右侧
+  box(dg, w - 0.05, h - 0.05, 0.02, body, 0, 0, -d / 2 + 0.03);       // 后板
+  dg.position.set(x, y, z);
+  return dg;
+}
+
 // ---------- 家具建造函数 ----------
 // 每个 builder 返回 { group, parts } ；parts 里放需要开合动画的节点（M4 用）
 
@@ -93,7 +106,7 @@ function carpet(w = 2.6, d = 1.8) {
     new THREE.BoxGeometry(w, 0.022, d),
     new THREE.MeshLambertMaterial({ map: rugTexture(w, d) })
   );
-  base.position.y = 0.011;
+  base.position.y = 0.035;   // 抬到地板视觉层之上，避免共面闪烁
   base.receiveShadow = true;
   g.add(base);
   P.lift = base;
@@ -132,9 +145,9 @@ function counter() {
   box(g, 0.5, 0.02, 0.4, C.metal, -0.6, 0.9, 0);
   box(g, 0.44, 0.06, 0.34, 0x8b929a, -0.6, 0.865, 0);
   cyl(g, 0.02, 0.24, C.metal, -0.6, 1.0, -0.22);
-  // 抽屉（滑出式）
-  P.drawer1 = box(g, 0.72, 0.2, 0.58, C.wood, -0.6, 0.68, 0.02);
-  P.drawer2 = box(g, 0.72, 0.2, 0.58, C.wood, 0.25, 0.68, 0.02);
+  // 抽屉（滑出式，含真实箱体）
+  P.drawer1 = drawerBox(0.72, 0.2, 0.58, C.wood, -0.6, 0.68, 0.02);
+  P.drawer2 = drawerBox(0.72, 0.2, 0.58, C.wood, 0.25, 0.68, 0.02);
   // 柜门（下翻门简化为左开门）
   P.cabDoor = box(g, 0.72, 0.5, 0.03, C.wood, -0.6, 0.25, 0.315);
   box(g, 0.72, 0.5, 0.56, C.woodDark, 0.25, 0.25, 0);            // 开放格内腔
@@ -254,7 +267,7 @@ function nightstand() {
   const g = new THREE.Group(), P = {};
   box(g, 0.45, 0.5, 0.4, C.wood, 0, 0.28, 0);
   legs4(g, 0.45, 0.4, 0.06, C.woodDark);
-  P.drawer = box(g, 0.4, 0.16, 0.36, C.woodLight, 0, 0.38, 0.03);
+  P.drawer = drawerBox(0.4, 0.16, 0.36, C.woodLight, 0, 0.38, 0.03);
   box(g, 0.12, 0.03, 0.03, C.dark, 0, 0.38, 0.22);               // 把手
   return { group: g, parts: P };
 }
@@ -275,8 +288,8 @@ function dresser() {
   const g = new THREE.Group(), P = {};
   box(g, 0.9, 0.78, 0.45, C.wood, 0, 0.42, 0);
   legs4(g, 0.9, 0.45, 0.06, C.woodDark);
-  P.drawer1 = box(g, 0.84, 0.26, 0.4, C.woodLight, 0, 0.58, 0.035);
-  P.drawer2 = box(g, 0.84, 0.26, 0.4, C.woodLight, 0, 0.3, 0.035);
+  P.drawer1 = drawerBox(0.84, 0.26, 0.4, C.woodLight, 0, 0.58, 0.035);
+  P.drawer2 = drawerBox(0.84, 0.26, 0.4, C.woodLight, 0, 0.3, 0.035);
   for (const y of [0.58, 0.3]) box(g, 0.16, 0.03, 0.03, C.dark, 0, y, 0.245);
   return { group: g, parts: P };
 }
@@ -286,7 +299,7 @@ function desk() {
   box(g, 1.4, 0.05, 0.7, C.wood, 0, 0.735, 0);                   // 桌面
   box(g, 0.05, 0.7, 0.65, C.woodDark, -0.66, 0.36, 0);           // 侧板
   box(g, 0.05, 0.7, 0.65, C.woodDark, 0.66, 0.36, 0);
-  P.drawer = box(g, 0.5, 0.12, 0.5, C.woodLight, 0.35, 0.63, 0.05); // 悬空抽屉
+  P.drawer = drawerBox(0.5, 0.12, 0.5, C.woodLight, 0.35, 0.63, 0.05); // 悬空抽屉
   box(g, 0.14, 0.03, 0.03, C.dark, 0.35, 0.63, 0.32);
   return { group: g, parts: P };
 }

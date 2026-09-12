@@ -82,28 +82,32 @@ export function buildUpperFloor(scene, colliders) {
   wall(scene, colliders, { axis: 'x', at: 0, from: -7.5, to: 7.5, yBase: F2, thickness: INT_T, m: intMat, openings: [{ at: -3.75, w: 1.05, y1: 2.15 }, { at: 3.75, w: 1.05, y1: 2.15 }] });
   wall(scene, colliders, { axis: 'z', at: 0, from: -5.5, to: 5.5, yBase: F2, thickness: INT_T, m: intMat, openings: [{ at: -3, w: 1.05, y1: 2.15 }, { at: 3, w: 1.05, y1: 2.15 }] });
 
-  // ---- 楼板（含楼梯口：x 4.6..7.5, z -5.5..-4.55 不铺）----
+  // ---- 楼板（含楼梯口：x 4.6..7.5 × z -5.5..-4.55 留空）----
   const SLAB_T = 0.25, slabMat = mat(0xd8cdbb);
   const quads = [
-    [-7.5, 0, -5.5, 0],      // 家庭厅
-    [0, 4.6, -5.5, 0],       // 储物间（西段，东侧留楼梯口）
-    [-7.5, 0, 0, 5.5],       // 主卧
-    [0, 7.5, 0, 5.5],        // 儿童房
+    [-7.5, 0, -5.5, 0],       // 家庭厅
+    [0, 7.5, -4.55, 0],       // 储物间（楼梯口贯穿整个楼梯段，保证头部空间）
+    [-7.5, 0, 0, 5.5],        // 主卧
+    [0, 7.5, 0, 5.5],         // 儿童房
   ];
   for (const [x0, x1, z0, z1] of quads) {
     box(scene, colliders, (x0 + x1) / 2, F2 - SLAB_T / 2, (z0 + z1) / 2, x1 - x0, SLAB_T, z1 - z0, slabMat, { castShadow: false });
   }
 
-  // ---- 二楼地板（同楼板顶面，铺木纹色薄板视觉层）----
+  // ---- 二楼地板（木色视觉层；储物间分两块避开楼梯口）----
   for (const r of F2_ROOMS) {
-    const w = r.maxX - r.minX, d = r.maxZ - r.minZ;
-    const f = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat(0xc9a878));
-    f.rotation.x = -Math.PI / 2;
-    f.position.set((r.minX + r.maxX) / 2, F2 + 0.021, (r.minZ + r.maxZ) / 2);
-    f.receiveShadow = true;
-    scene.add(f);
+    const parts = r.id === 'storage'
+      ? [[r.minX, r.maxX, -4.55, r.maxZ]]
+      : [[r.minX, r.maxX, r.minZ, r.maxZ]];
+    for (const [x0, x1, z0, z1] of parts) {
+      const f = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat(0xc9a878));
+      f.rotation.x = -Math.PI / 2;
+      f.position.set((x0 + x1) / 2, F2 + 0.021, (z0 + z1) / 2);
+      f.receiveShadow = true;
+      scene.add(f);
+    }
   }
-  // 楼梯口地板补条（储物间东侧不留口区域外：楼梯平台在 x 6.5..7.5）
+  // 楼梯口平台补板
   box(scene, colliders, 7.0, F2 - SLAB_T / 2, -5.02, 1.0, SLAB_T, 0.95, slabMat, { castShadow: false });
 
   // ---- 楼梯（厨房北墙，x 1.2 → 6.5 上升，宽0.9）----
@@ -115,12 +119,13 @@ export function buildUpperFloor(scene, colliders) {
   for (let i = 0; i < STEPS; i += 3) {
     box(scene, colliders, 1.2 + i * TREAD + TREAD / 2, (i + 1) * RISE + 0.45, -4.53, 0.05, 0.9, 0.05, mat(0x8a6a45), { collide: false });
   }
-  box(scene, colliders, 3.85, 1.7, -4.53, 5.3, 0.06, 0.07, mat(0x8a6a45), { collide: false }); // 扶手斜梁(近似水平)
+  box(scene, colliders, 3.85, 2.72, -4.53, Math.hypot(5.22, 3.15), 0.07, 0.07, mat(0x8a6a45), { collide: false }).rotation.z = Math.atan2(3.15, 5.22); // 扶手斜梁（随坡度）
 
-  // ---- 二楼楼梯口围栏 ----
-  box(scene, colliders, 4.57, F2 + 0.45, -5.02, 0.06, 0.9, 0.95, mat(0x8a6a45));
-  box(scene, colliders, 5.6, F2 + 0.9, -5.02, 2.1, 0.06, 0.07, mat(0x8a6a45), { collide: false });
-  box(scene, colliders, 7.0, F2 + 0.45, -4.53, 1.1, 0.9, 0.06, mat(0x8a6a45));
+  // ---- 二楼楼梯口护栏（纯装饰：开孔四周均为同高层地板或墙体，无坠落风险）----
+  box(scene, colliders, 1.07, F2 + 0.45, -5.02, 0.06, 0.9, 0.95, mat(0x8a6a45), { collide: false });
+  box(scene, colliders, 7.53, F2 + 0.45, -5.02, 0.06, 0.9, 0.95, mat(0x8a6a45), { collide: false });
+  box(scene, colliders, 4.25, F2 + 0.9, -4.53, 6.5, 0.06, 0.07, mat(0x8a6a45), { collide: false });
+  box(scene, colliders, 4.25, F2 + 0.45, -4.53, 6.5, 0.9, 0.06, mat(0x8a6a45), { collide: false });
 
   // ---- 坡屋顶（layer 2：院内/一楼视角可见，菜单俯瞰自动隐藏）----
   const ROOF = 2, ridgeY = F2 + WALL_H + 2.15, eaveY = F2 + WALL_H;
