@@ -36,7 +36,10 @@ http.createServer((req, res) => {
       return res.end('404 Not Found: ' + urlPath);
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': 'no-cache',   // 模型/脚本更新即时生效
+    });
     res.end(data);
   });
 }).listen(PORT, HOST, () => {

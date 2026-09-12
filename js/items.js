@@ -17,9 +17,17 @@ export function itemById(id) { return ITEM_DEFS.find(i => i.id === id); }
 
 function mat(color) { return new THREE.MeshLambertMaterial({ color }); }
 
+// Blender 物品模型工厂（main.js 注入）：(itemId) => Group | null；空则走程序化
+let itemFactory = null;
+export function setItemFactory(fn) { itemFactory = fn; }
+
 // 低多边形物品网格
 export function createItemMesh(def) {
   const [w, h, d] = def.size;
+  if (itemFactory) {
+    const m = itemFactory(def.id);
+    if (m) return m;
+  }
   let geo;
   switch (def.shape) {
     case 'coin': geo = new THREE.CylinderGeometry(w / 2, w / 2, h, 14); break;

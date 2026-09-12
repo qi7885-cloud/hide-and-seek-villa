@@ -40,10 +40,13 @@ node server.js
 ## ⚙️ 技术要点
 
 - **Three.js 0.186**（本地化，无 CDN 依赖）+ 原生 ES Modules + 零依赖 Node 静态服务器
-- 程序化建模：墙体/门窗/29 件家具全部代码生成，总计约 400 个网格
-- 「容器-槽位」藏匿系统：31 个槽位数据驱动（`furniture.js` 目录 + `slots.js` 校验），换模型不影响玩法
+- **Blender 全量建模**（M13）：别墅结构/庭院/29 类家具/8 种藏匿物品/角色替身全部由
+  `tools/blender_build.py` 无头建模（倒角、镂空容器、有机树冠、PBR 材质+程序纹理），
+  导出 50 个 GLB（约 6MB），游戏经本地 GLTFLoader 加载；任一模型缺失自动回退程序化几何
+- 「容器-槽位」藏匿系统：31 个槽位数据驱动（`furniture.js` 目录 + `slots.js` 校验），
+  GLB 部件以 `part_*` 命名对接原开合动画（门/抽屉/掀地毯/抽书），碰撞体与槽位坐标与旧版完全一致
 - 轻量物理：静态 AABB 碰撞 + 圆柱滑行 + 重力，家具永不穿地
-- 性能保护：像素比 ≤ 2、帧间隔钳制、单方向光阴影、无重型后处理
+- 性能保护：像素比 ≤ 2、帧间隔钳制、单方向光阴影、无重型后处理（实测 241fps）
 
 ## 📁 结构
 
@@ -52,13 +55,19 @@ hide-and-seek/
 ├── index.html          # 入口与全部 UI 层
 ├── server.js           # 零依赖静态服务器
 ├── 启动游戏.bat         # Windows 一键启动
-├── vendor/             # three.js 本地副本
+├── vendor/             # three.js 本地副本 + GLTFLoader
+├── models/             # Blender 导出的 GLB（villa/yard/avatar + pieces/* + item_*）
+├── tools/
+│   ├── blender_build.py  # Blender 无头建模与导出脚本（可复现，改完重跑即可）
+│   └── verify_glb.py     # GLB 部件名/材质校验
 └── js/
-    ├── main.js         # 组装入口
+    ├── main.js         # 组装入口（异步预加载模型）
+    ├── models.js       # GLB 加载器：部件代理/别名/阴影与图层规则
     ├── scene.js        # 渲染器/灯光/主循环
-    ├── villa.js        # 别墅生成（墙体开口算法）
-    ├── furniture.js    # 家具目录+槽位元数据
-    ├── items.js        # 可藏物品定义
+    ├── villa.js        # 别墅碰撞骨架（视觉由 GLB 接管）
+    ├── villa2.js       # 二楼+庭院碰撞骨架
+    ├── furniture.js    # 家具目录+槽位元数据（GLB 优先，缺失回退程序化）
+    ├── items.js        # 可藏物品定义（GLB 优先）
     ├── slots.js        # 槽位校验（尺寸/类型/折叠规则）
     ├── interact.js     # 开合动画/射线交互/检查特写/放置
     ├── placement.js    # 藏家放置 UI
@@ -66,4 +75,13 @@ hide-and-seek/
     ├── spectator.js    # 上帝相机/角色替身/画中画观战
     ├── game.js         # 回合状态机/计时/提示/比分
     └── audio.js        # WebAudio 合成音效
+```
+
+## 🔧 重新生成模型
+
+改了建模想更新游戏？装好 Blender 后一条命令重建全部 GLB：
+
+```bash
+blender -b --python tools/blender_build.py -- --out <项目根目录>
+python tools/verify_glb.py   # 校验部件名
 ```

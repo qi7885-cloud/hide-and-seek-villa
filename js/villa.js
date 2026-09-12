@@ -1,5 +1,6 @@
-// villa.js — 程序化别墅：4 房间一层，墙体带门窗开口，全部静态碰撞体
-// M9：真实化升级——人字拼地板/瓷砖纹理、拱形门洞、法式细部由 realism.js 叠加
+// villa.js — 别墅骨架：4 房间一层，墙体带门窗开口，全部静态碰撞体
+// M13：视觉层由 Blender 建模（models/villa.glb）接管，本文件在 visuals=false 时
+// 只生成碰撞体与灯光，保证玩法层（碰撞/出生点）不变。
 import * as THREE from 'three';
 import { herringboneTexture, tileTexture } from './textures.js';
 import { addRealism } from './realism.js';
@@ -7,6 +8,9 @@ import { addRealism } from './realism.js';
 export const WALL_H = 2.9;          // 墙高
 export const EXT_T = 0.24;          // 外墙厚
 export const INT_T = 0.12;          // 内墙厚
+
+let VISUALS = true;                 // false = 仅碰撞骨架（GLB 接管视觉）
+export function setVillaVisuals(v) { VISUALS = v; }
 
 // 房间定义（俯视图，x 向右，z 向下/南）
 export const ROOMS = [
@@ -22,11 +26,21 @@ export const SPAWN = {
 
 // ---------- 基础构件 ----------
 function addBox(scene, colliders, cx, cy, cz, sx, sy, sz, mat, opts = {}) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
-  mesh.position.set(cx, cy, cz);
-  mesh.castShadow = opts.castShadow !== false;
-  mesh.receiveShadow = true;
-  scene.add(mesh);
+  if (VISUALS) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
+    mesh.position.set(cx, cy, cz);
+    mesh.castShadow = opts.castShadow !== false;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    if (opts.collide !== false) {
+      colliders.push({
+        minX: cx - sx / 2, maxX: cx + sx / 2,
+        minZ: cz - sz / 2, maxZ: cz + sz / 2,
+        minY: cy - sy / 2, maxY: cy + sy / 2,
+      });
+    }
+    return mesh;
+  }
   if (opts.collide !== false) {
     colliders.push({
       minX: cx - sx / 2, maxX: cx + sx / 2,
@@ -34,7 +48,7 @@ function addBox(scene, colliders, cx, cy, cz, sx, sy, sz, mat, opts = {}) {
       minY: cy - sy / 2, maxY: cy + sy / 2,
     });
   }
-  return mesh;
+  return null;
 }
 
 // 带开口的墙：openings=[{at(沿墙轴坐标), w, y0=0, y1=WALL_H, glass?, frame?, doorLeaf?}]
@@ -61,9 +75,10 @@ function buildWall(scene, colliders, o) {
     else addBox(scene, colliders, at, cy, mid, thickness, sy, len, mat);
   }
 
-  // 开口装饰：窗玻璃+窗框 / 门框+门扇
+  // 开口装饰：窗玻璃+窗框 / 门框+门扇（GLB 模式下由 Blender 模型提供）
   for (const op of openings) {
     const y0 = op.y0 ?? 0, y1 = op.y1 ?? WALL_H;
+    if (!VISUALS) continue;
     if (op.glass) {
       const glassMat = new THREE.MeshLambertMaterial({
         color: 0xbfe3f2, transparent: true, opacity: 0.28, depthWrite: false,
@@ -139,42 +154,44 @@ export function buildVilla(scene, colliders) {
     }
   }
 
-  // 各房间地板（Poly Haven 实拍木地板 / 厨房瓷砖）
-  const woodLoader = new THREE.TextureLoader();
-  for (const r of ROOMS) {
-    const w = r.maxX - r.minX, d = r.maxZ - r.minZ;
-    let matFloor;
-    if (r.id === 'kitchen') {
-      matFloor = new THREE.MeshStandardMaterial({ map: tileTexture(w, d), roughness: 0.55, metalness: 0 });
-    } else {
-      const tex = woodLoader.load('textures/wood_diff.jpg');
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(w / 2.2, d / 2.2);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
-      matFloor = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.02 });
+  // 各房间地板（Blender 模型模式跳过）
+  if (VISUALS) {
+    const woodLoader = new THREE.TextureLoader();
+    for (const r of ROOMS) {
+      const w = r.maxX - r.minX, d = r.maxZ - r.minZ;
+      let matFloor;
+      if (r.id === 'kitchen') {
+        matFloor = new THREE.MeshStandardMaterial({ map: tileTexture(w, d), roughness: 0.55, metalness: 0 });
+      } else {
+        const tex = woodLoader.load('textures/wood_diff.jpg');
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(w / 2.2, d / 2.2);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        matFloor = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.02 });
+      }
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), matFloor);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set((r.minX + r.maxX) / 2, 0.012, (r.minZ + r.maxZ) / 2);
+      floor.receiveShadow = true;
+      scene.add(floor);
     }
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), matFloor);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set((r.minX + r.maxX) / 2, 0.012, (r.minZ + r.maxZ) / 2);
-    floor.receiveShadow = true;
-    scene.add(floor);
+
+    // 天花板（单面朝下：室内可见、上帝视角自动隐去，方便藏家俯瞰）
+    // 用不受光材质，避免半球光把顶面染成暗棕色
+    const ceil = new THREE.Mesh(
+      new THREE.PlaneGeometry(15.4, 11.4),
+      new THREE.MeshBasicMaterial({ color: 0xf0ede6 })
+    );
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.set(0, WALL_H - 0.03, 0);   // 低于楼板底面2.9，避免共面闪烁
+    ceil.receiveShadow = true;
+    scene.add(ceil);
+
+    // 门廊台阶（正门外）
+    addBox(scene, colliders, -7.9, 0.06, -2.5, 1.6, 0.12, 1.6,
+      new THREE.MeshLambertMaterial({ color: 0xb0aca4 }), { collide: false });
   }
-
-  // 天花板（单面朝下：室内可见、上帝视角自动隐去，方便藏家俯瞰）
-  // 用不受光材质，避免半球光把顶面染成暗棕色
-  const ceil = new THREE.Mesh(
-    new THREE.PlaneGeometry(15.4, 11.4),
-    new THREE.MeshBasicMaterial({ color: 0xf0ede6 })
-  );
-  ceil.rotation.x = Math.PI / 2;
-  ceil.position.set(0, WALL_H - 0.03, 0);   // 低于楼板底面2.9，避免共面闪烁
-  ceil.receiveShadow = true;
-  scene.add(ceil);
-
-  // 门廊台阶（正门外）
-  addBox(scene, colliders, -7.9, 0.06, -2.5, 1.6, 0.12, 1.6,
-    new THREE.MeshLambertMaterial({ color: 0xb0aca4 }), { collide: false });
 
   // 各房间暖色顶灯（无阴影，低成本补光）
   for (const r of ROOMS) {
@@ -183,8 +200,8 @@ export function buildVilla(scene, colliders) {
     scene.add(l);
   }
 
-  // 法式细部与软装：石膏线/踢脚线/灯槽/护墙板/窗帘/吊灯/相片墙
-  addRealism(scene);
+  // 法式细部与软装：石膏线/踢脚线/灯槽/护墙板/窗帘/吊灯/相片墙（GLB 模式由 Blender 提供）
+  if (VISUALS) addRealism(scene);
 
   return { rooms: ROOMS, spawn: SPAWN, wallHeight: WALL_H };
 }

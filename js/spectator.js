@@ -62,7 +62,15 @@ export class GodCamera {
 }
 
 // ---------- 找家角色替身（仅画中画层可见，layer 1） ----------
-export function createAvatar() {
+// prebuilt: models.js 提供的 Blender 角色模型（avatar.glb）；缺省回退程序化替身
+export function createAvatar(prebuilt = null) {
+  if (prebuilt) {
+    prebuilt.traverse((o) => {
+      if (o.isMesh) { o.castShadow = true; o.layers.set(1); }
+    });
+    prebuilt.layers.set(1);
+    return prebuilt;
+  }
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.85, 6, 12), new THREE.MeshLambertMaterial({ color: 0xd97b4a }));
   body.position.y = 0.75;

@@ -594,11 +594,14 @@ export const CATALOG = [
 ];
 
 // ---------- 总装 ----------
-export function buildFurniture(scene, colliders) {
+// modelFactory: (def) => ({ group, parts }) | null —— 传入时优先用 Blender GLB 模型，
+// 返回 null 的条目回退到程序化 build()（碰撞/槽位/动画逻辑两者完全一致）
+export function buildFurniture(scene, colliders, modelFactory = null) {
   const pieces = [];
   const tmpBox = new THREE.Box3();
   for (const def of CATALOG) {
-    const { group, parts } = def.build();
+    const inst = modelFactory ? modelFactory(def) : null;
+    const { group, parts } = inst || def.build();
     group.position.set(...def.pos);
     group.rotation.y = def.rotY;
     scene.add(group);

@@ -42,12 +42,13 @@ export function createScene(container) {
   sun.shadow.bias = -0.0004;
   scene.add(sun);
 
-  // 临时地面（M2 会换成真正的地板与别墅）
+  // 兜底地面（庭院 GLB 的草坪会盖在它上方；模型缺失时也有绿底）
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(60, 60),
     new THREE.MeshLambertMaterial({ color: 0x9fb98a })
   );
   ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.06;
   ground.receiveShadow = true;
   scene.add(ground);
 

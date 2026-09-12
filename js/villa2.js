@@ -1,4 +1,6 @@
 // villa2.js — M10 扩建：二楼（4房间+楼梯）+ 坡屋顶 + 庭院（围栏/树木/长椅/信箱/花坛）
+// M13：视觉层由 Blender 建模（villa.glb 二楼部分 + yard.glb）接管，
+// visuals=false 时只生成碰撞体，玩法层（楼梯/围栏/楼板支撑）不变。
 import * as THREE from 'three';
 
 const F2 = 3.15;        // 二楼地面高度（楼板顶面）
@@ -6,12 +8,15 @@ const WALL_H = 2.9;
 const EXT_T = 0.24, INT_T = 0.12;
 const mat = (color, opt = {}) => new THREE.MeshLambertMaterial({ color, ...opt });
 
+let VISUALS = true;                 // false = 仅碰撞骨架（GLB 接管视觉）
+export function setUpperVisuals(v) { VISUALS = v; }
+
 function box(scene, colliders, cx, cy, cz, sx, sy, sz, m, opts = {}) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
   mesh.position.set(cx, cy, cz);
   mesh.castShadow = opts.castShadow !== false;
   mesh.receiveShadow = true;
-  scene.add(mesh);
+  if (VISUALS) scene.add(mesh);
   if (opts.collide !== false) {
     colliders.push({ minX: cx - sx / 2, maxX: cx + sx / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2, minY: cy - sy / 2, maxY: cy + sy / 2 });
   }
@@ -40,9 +45,9 @@ function wall(scene, colliders, o) {
     if (axis === 'x') box(scene, colliders, mid, yBase + cy, at, len, sy, thickness, m);
     else box(scene, colliders, at, yBase + cy, mid, thickness, sy, len, m);
   }
-  // 窗玻璃+框
+  // 窗玻璃+框（GLB 模式由 Blender 提供）
   for (const op of openings) {
-    if (!op.glass) continue;
+    if (!op.glass || !VISUALS) continue;
     const y0 = op.y0 ?? 0, y1 = op.y1 ?? WALL_H, gy = yBase + (y0 + y1) / 2;
     const glassMat = mat(0xbfe3f2, { transparent: true, opacity: 0.28, depthWrite: false });
     const fm = mat(0x6b5138);
@@ -94,17 +99,19 @@ export function buildUpperFloor(scene, colliders) {
     box(scene, colliders, (x0 + x1) / 2, F2 - SLAB_T / 2, (z0 + z1) / 2, x1 - x0, SLAB_T, z1 - z0, slabMat, { castShadow: false });
   }
 
-  // ---- 二楼地板（木色视觉层；储物间分两块避开楼梯口）----
-  for (const r of F2_ROOMS) {
-    const parts = r.id === 'storage'
-      ? [[r.minX, r.maxX, -4.55, r.maxZ]]
-      : [[r.minX, r.maxX, r.minZ, r.maxZ]];
-    for (const [x0, x1, z0, z1] of parts) {
-      const f = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat(0xc9a878));
-      f.rotation.x = -Math.PI / 2;
-      f.position.set((x0 + x1) / 2, F2 + 0.021, (z0 + z1) / 2);
-      f.receiveShadow = true;
-      scene.add(f);
+  // ---- 二楼地板（木色视觉层；GLB 模式由 Blender 提供）----
+  if (VISUALS) {
+    for (const r of F2_ROOMS) {
+      const parts = r.id === 'storage'
+        ? [[r.minX, r.maxX, -4.55, r.maxZ]]
+        : [[r.minX, r.maxX, r.minZ, r.maxZ]];
+      for (const [x0, x1, z0, z1] of parts) {
+        const f = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat(0xc9a878));
+        f.rotation.x = -Math.PI / 2;
+        f.position.set((x0 + x1) / 2, F2 + 0.021, (z0 + z1) / 2);
+        f.receiveShadow = true;
+        scene.add(f);
+      }
     }
   }
   // 楼梯口平台补板
@@ -127,43 +134,45 @@ export function buildUpperFloor(scene, colliders) {
   box(scene, colliders, 4.25, F2 + 0.9, -4.53, 6.5, 0.06, 0.07, mat(0x8a6a45), { collide: false });
   box(scene, colliders, 4.25, F2 + 0.45, -4.53, 6.5, 0.9, 0.06, mat(0x8a6a45), { collide: false });
 
-  // ---- 坡屋顶（layer 2：院内/一楼视角可见，菜单俯瞰自动隐藏）----
-  const ROOF = 2, ridgeY = F2 + WALL_H + 2.15, eaveY = F2 + WALL_H;
-  const EZ = 6.35, EX = 8.4;  // 出檐
-  const roofMat = mat(0x9a5a48, { side: THREE.DoubleSide });
-  for (const side of [-1, 1]) {
-    const g = new THREE.BufferGeometry();
-    const v = new Float32Array([
-      -EX, eaveY, side * EZ,  EX, eaveY, side * EZ,  EX, ridgeY, 0,
-      -EX, eaveY, side * EZ,  EX, ridgeY, 0,        -EX, ridgeY, 0,
-    ]);
-    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
-    g.computeVertexNormals();
-    const m = new THREE.Mesh(g, roofMat);
-    m.layers.set(ROOF);
-    m.receiveShadow = true;
-    scene.add(m);
+  // ---- 坡屋顶（layer 2：院内/一楼视角可见，菜单俯瞰自动隐藏；GLB 模式由 Blender 提供）----
+  if (VISUALS) {
+    const ROOF = 2, ridgeY = F2 + WALL_H + 2.15, eaveY = F2 + WALL_H;
+    const EZ = 6.35, EX = 8.4;  // 出檐
+    const roofMat = mat(0x9a5a48, { side: THREE.DoubleSide });
+    for (const side of [-1, 1]) {
+      const g = new THREE.BufferGeometry();
+      const v = new Float32Array([
+        -EX, eaveY, side * EZ,  EX, eaveY, side * EZ,  EX, ridgeY, 0,
+        -EX, eaveY, side * EZ,  EX, ridgeY, 0,        -EX, ridgeY, 0,
+      ]);
+      g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+      g.computeVertexNormals();
+      const m = new THREE.Mesh(g, roofMat);
+      m.layers.set(ROOF);
+      m.receiveShadow = true;
+      scene.add(m);
+    }
+    // 屋脊
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(EX * 2 + 0.2, 0.14, 0.32), mat(0x7a4638));
+    ridge.position.set(0, ridgeY + 0.06, 0);
+    ridge.layers.set(ROOF);
+    scene.add(ridge);
+    // 山墙（三角封板，东西端）
+    for (const ex of [-7.5, 7.5]) {
+      const shape = new THREE.Shape();
+      shape.moveTo(-5.62, 0); shape.lineTo(5.62, 0); shape.lineTo(0, ridgeY - eaveY); shape.closePath();
+      const g = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat(0xe8e0d2, { side: THREE.DoubleSide }));
+      g.rotation.y = Math.PI / 2;
+      g.position.set(ex + (ex > 0 ? -EXT_T / 2 : EXT_T / 2) * 0 , eaveY - 0.01, 0);
+      g.position.x = ex;
+      scene.add(g);
+    }
+    // 烟囱
+    const chim = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.7, 0.7), mat(0xb0876a));
+    chim.position.set(4.5, ridgeY - 0.15, -1.7);
+    chim.castShadow = true;
+    scene.add(chim);
   }
-  // 屋脊
-  const ridge = new THREE.Mesh(new THREE.BoxGeometry(EX * 2 + 0.2, 0.14, 0.32), mat(0x7a4638));
-  ridge.position.set(0, ridgeY + 0.06, 0);
-  ridge.layers.set(ROOF);
-  scene.add(ridge);
-  // 山墙（三角封板，东西端）
-  for (const ex of [-7.5, 7.5]) {
-    const shape = new THREE.Shape();
-    shape.moveTo(-5.62, 0); shape.lineTo(5.62, 0); shape.lineTo(0, ridgeY - eaveY); shape.closePath();
-    const g = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat(0xe8e0d2, { side: THREE.DoubleSide }));
-    g.rotation.y = Math.PI / 2;
-    g.position.set(ex + (ex > 0 ? -EXT_T / 2 : EXT_T / 2) * 0 , eaveY - 0.01, 0);
-    g.position.x = ex;
-    scene.add(g);
-  }
-  // 烟囱
-  const chim = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.7, 0.7), mat(0xb0876a));
-  chim.position.set(4.5, ridgeY - 0.15, -1.7);
-  chim.castShadow = true;
-  scene.add(chim);
 
   // ---- 二楼顶灯 ----
   for (const r of F2_ROOMS) {
