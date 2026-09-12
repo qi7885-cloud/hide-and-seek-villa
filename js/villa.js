@@ -107,9 +107,9 @@ function buildWall(scene, colliders, o) {
 
 // ---------- 别墅主函数 ----------
 export function buildVilla(scene, colliders) {
-  const extMat = new THREE.MeshLambertMaterial({ color: 0xe8e0d2 });   // 米白外墙
-  const intMat = new THREE.MeshLambertMaterial({ color: 0xf2ede4 });   // 内墙
-  const frameMat = new THREE.MeshLambertMaterial({ color: 0x6b5138 }); // 门窗框
+  const extMat = new THREE.MeshStandardMaterial({ color: 0xe6ddce, roughness: 0.9 });  // 米白外墙
+  const intMat = new THREE.MeshStandardMaterial({ color: 0xf0ebe0, roughness: 0.95 }); // 内墙
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x5d4630, roughness: 0.6 }); // 门窗框
 
   const win = (at) => ({ at, w: 1.4, y0: 0.95, y1: 2.15, glass: true }); // 标准窗
   const door = (at, extra = {}) => ({ at, w: 1.05, y1: 2.15, ...extra }); // 标准门洞
@@ -139,14 +139,22 @@ export function buildVilla(scene, colliders) {
     }
   }
 
-  // 各房间地板（人字拼木地板 / 厨房瓷砖）
+  // 各房间地板（Poly Haven 实拍木地板 / 厨房瓷砖）
+  const woodLoader = new THREE.TextureLoader();
   for (const r of ROOMS) {
     const w = r.maxX - r.minX, d = r.maxZ - r.minZ;
-    const tex = r.id === 'kitchen' ? tileTexture(w, d) : herringboneTexture(w, d);
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, d),
-      new THREE.MeshLambertMaterial({ map: tex })
-    );
+    let matFloor;
+    if (r.id === 'kitchen') {
+      matFloor = new THREE.MeshStandardMaterial({ map: tileTexture(w, d), roughness: 0.55, metalness: 0 });
+    } else {
+      const tex = woodLoader.load('textures/wood_diff.jpg');
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(w / 2.2, d / 2.2);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      matFloor = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.02 });
+    }
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), matFloor);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set((r.minX + r.maxX) / 2, 0.02, (r.minZ + r.maxZ) / 2);
     floor.receiveShadow = true;

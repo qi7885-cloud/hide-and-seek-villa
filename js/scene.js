@@ -1,5 +1,6 @@
 // scene.js — 渲染器、场景、灯光、渲染循环（M1）
 import * as THREE from 'three';
+import { RoomEnvironment } from '../vendor/jsm/environments/RoomEnvironment.js';
 
 export function createScene(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -14,14 +15,18 @@ export function createScene(container) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9cc2e0); // 天空蓝
 
+  // 环境光照（PBR 材质的真实感来源）：室内辐射环境
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
   const camera = new THREE.PerspectiveCamera(
     70, window.innerWidth / window.innerHeight, 0.05, 200
   );
   camera.position.set(0, 3, 10);
   camera.lookAt(0, 1, 0);
 
-  // 灯光：暖调半球光 + 主方向光（带阴影）
-  const hemi = new THREE.HemisphereLight(0xf2e9dc, 0x9a8a74, 0.85);
+  // 灯光：暖调半球光（环境泛光主要由 scene.environment 提供）+ 主方向光
+  const hemi = new THREE.HemisphereLight(0xf2e9dc, 0x9a8a74, 0.4);
   scene.add(hemi);
 
   const sun = new THREE.DirectionalLight(0xffe7c4, 1.5);
