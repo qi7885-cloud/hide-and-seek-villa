@@ -102,11 +102,12 @@ export function addRealism(scene) {
     }
   }
 
-  // 窗帘（全部8扇窗）
-  const curtain = (axis, wallAt, dir, centerAt, w = 1.4) => {
-    const rodLen = w + 0.6, rodY = 2.32, off = INSET + 0.14;
-    const px = axis === 'x' ? centerAt : wallAt + dir * off;
-    const pz = axis === 'x' ? wallAt + dir * off : centerAt;
+  // 窗帘（spread=两片帘离窗中心的距离，shift=整体偏移避开家具）
+  const curtain = (axis, wallAt, dir, centerAt, w = 1.4, spread = 0.65, shift = 0) => {
+    const rodLen = w + 0.6 + Math.abs(shift), rodY = 2.32, off = INSET + 0.14;
+    const c = centerAt + shift;
+    const px = axis === 'x' ? c : wallAt + dir * off;
+    const pz = axis === 'x' ? wallAt + dir * off : c;
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, rodLen, 10), mat(0x6b5138));
     if (axis === 'x') rod.rotation.z = Math.PI / 2; else rod.rotation.x = Math.PI / 2;
     rod.position.set(px, rodY, pz);
@@ -121,22 +122,22 @@ export function addRealism(scene) {
       }
       geo.computeVertexNormals();
       const m = new THREE.Mesh(geo, mat(0xf6f0e4, { side: THREE.DoubleSide }));
-      const cp = axis === 'x' ? centerAt + side * (w / 2 - 0.05) : wallAt + dir * (off + 0.05);
-      const cz2 = axis === 'x' ? wallAt + dir * (off + 0.05) : centerAt + side * (w / 2 - 0.05);
+      const cp = axis === 'x' ? c + side * spread : wallAt + dir * (off + 0.05);
+      const cz2 = axis === 'x' ? wallAt + dir * (off + 0.05) : c + side * spread;
       m.position.set(cp, rodY - 1.08, cz2);
       if (axis === 'z') m.rotation.y = Math.PI / 2;
       m.castShadow = true;
       scene.add(m);
     }
   };
-  curtain('x', -5.5, 1, -3.75);
-  curtain('x', -5.5, 1, 3.75);
-  curtain('x', 5.5, -1, -3.75);
-  curtain('x', 5.5, -1, 3.75);
-  curtain('z', 7.5, -1, -2.75);
-  curtain('z', 7.5, -1, 2.75);
-  curtain('z', -7.5, 1, -4.3);
-  curtain('z', -7.5, 1, 2.75);
+  curtain('x', -5.5, 1, -3.75);                    // 北墙客厅窗
+  // 北墙厨房窗不挂帘（楼梯从此经过）
+  curtain('x', 5.5, -1, -3.75, 1.4, 0.85);         // 南墙卧室窗（避开衣柜区加宽）
+  curtain('x', 5.5, -1, 3.75, 1.4, 0.85);          // 南墙书房窗（避开书桌）
+  curtain('z', 7.5, -1, -2.75, 1.4, 0.28, 0.85);   // 东墙厨房窗（帘拢到南侧避开橱柜）
+  curtain('z', 7.5, -1, 2.75);                     // 东墙书房窗
+  curtain('z', -7.5, 1, -4.3);                     // 西墙客厅窗
+  curtain('z', -7.5, 1, 2.75);                     // 西墙卧室窗
 
   // 相片墙（客厅沙发上方）
   const frames = [
@@ -145,8 +146,8 @@ export function addRealism(scene) {
     [-4.62, 1.62, 0.4, 0.3, 0xb8a67c],
   ];
   for (const [fx, fy, w, h, art] of frames) {
-    box(scene, w + 0.05, h + 0.05, 0.03, 0x5a4632, fx, fy, -0.085);
-    box(scene, w, h, 0.012, art, fx, fy, -0.068);
+    box(scene, w + 0.05, h + 0.05, 0.03, 0x5a4632, fx, fy, -0.1);
+    box(scene, w, h, 0.012, art, fx, fy, -0.082);
   }
 
   // 客厅奶油泡分子灯

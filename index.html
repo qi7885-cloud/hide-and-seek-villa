@@ -30,7 +30,9 @@
     <div id="timer" class="hidden">02:00</div>
     <div id="hint-chip" class="hidden"></div>
     <div id="role-banner" class="hidden"></div>
+    <div id="found-counter" class="hidden"></div>
     <div id="toast" class="hidden"></div>
+    <button id="btn-exit" title="Esc 解锁鼠标后点击">✕ 退出本局</button>
   </div>
 
   <!-- 藏家放置面板（选择槽位） -->
@@ -52,11 +54,19 @@
             <option value="5">5</option>
           </select>
         </label>
+        <label>藏匿件数
+          <select id="opt-hidecount">
+            <option value="1">1 件</option>
+            <option value="2" selected>2 件</option>
+            <option value="3">3 件</option>
+          </select>
+        </label>
         <label>搜索时间
           <select id="opt-time">
             <option value="120" selected>2 分钟</option>
             <option value="180">3 分钟</option>
             <option value="300">5 分钟</option>
+            <option value="0">不限时间</option>
           </select>
         </label>
         <label>距离提示
@@ -67,14 +77,19 @@
         </label>
       </div>
       <button id="btn-start" class="btn-primary">开始游戏</button>
-      <p class="help-text">藏家：WASD 移动 / 点击家具选槽位藏东西<br>找家：WASD 移动 / 鼠标转动视角 / E 键互动</p>
+      <p class="help-text">
+        【藏家】第一视角布置：数字键 1-8 选物品 → 瞄准家具按 E → 数字键放入槽位 → 按 G 完成<br>
+        【找家】WASD 移动 / 鼠标视角 / Shift 跑 / Ctrl 下蹲 / E 开门·掀地毯·拿取 · 走楼梯上二楼<br>
+        庭院（长椅/信箱/花坛）和全屋 40+ 藏点都可藏 · Esc 解锁鼠标可点"退出本局"
+      </p>
     </div>
   </div>
 
   <div id="screen-cover" class="screen hidden">
     <div class="screen-card">
-      <h1>请把电脑交给“找”的玩家</h1>
+      <h1>请把电脑交给"找"的玩家</h1>
       <p class="subtitle">藏匿已完成，搜索即将开始</p>
+      <p id="cover-count" class="subtitle"></p>
       <button id="btn-cover-continue" class="btn-primary">我是找家，开始搜索！</button>
     </div>
   </div>

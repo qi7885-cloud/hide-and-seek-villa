@@ -356,6 +356,74 @@ function pictureFrame() {
   return { group: g, parts: P };
 }
 
+// ---- M10 新增：二楼与庭院家具 ----
+function chest() {
+  // 玩具箱：铰链盖板（M4开合系统复用 hinge）
+  const g = new THREE.Group(), P = {};
+  box(g, 0.62, 0.36, 0.42, C.wood, 0, 0.18, 0);
+  box(g, 0.6, 0.02, 0.4, 0x7a5230, 0, 0.06, 0);                  // 内底
+  P.lid = box(g, 0.64, 0.05, 0.44, C.woodLight, 0, 0.385, 0);    // 盖（绕后沿翻开）
+  box(g, 0.1, 0.03, 0.03, C.dark, 0, 0.37, 0.22);                // 把手
+  return { group: g, parts: P };
+}
+
+function shelfUnit() {
+  // 储物架：3格，2个内腔槽位
+  const g = new THREE.Group();
+  box(g, 0.05, 1.8, 0.34, C.woodDark, -0.46, 0.9, 0);
+  box(g, 0.05, 1.8, 0.34, C.woodDark, 0.46, 0.9, 0);
+  for (const y of [0.04, 0.62, 1.2, 1.78]) box(g, 0.92, 0.045, 0.32, C.wood, 0, y, 0);
+  return { group: g, parts: {} };
+}
+
+function crate() {
+  // 开口纸箱
+  const g = new THREE.Group();
+  const card = 0xc9a86a;
+  box(g, 0.5, 0.42, 0.5, card, 0, 0.21, 0);
+  box(g, 0.42, 0.02, 0.42, 0xa8875a, 0, 0.05, 0).castShadow = false;
+  box(g, 0.52, 0.04, 0.1, 0xb5975e, 0, 0.28, 0);                 // 封箱带
+  return { group: g, parts: {} };
+}
+
+function bench() {
+  // 庭院长椅（座面下可藏）
+  const g = new THREE.Group();
+  legs4(g, 1.5, 0.48, 0.42, C.woodDark, 0.07);
+  box(g, 1.55, 0.06, 0.5, C.wood, 0, 0.45, 0);                   // 座面
+  box(g, 1.55, 0.5, 0.06, C.wood, 0, 0.73, -0.22);               // 靠背
+  box(g, 1.55, 0.06, 0.06, C.wood, 0, 0.95, -0.22);
+  return { group: g, parts: {} };
+}
+
+function mailbox() {
+  // 庭院信箱
+  const g = new THREE.Group(), P = {};
+  cyl(g, 0.05, 1.0, C.woodDark, 0, 0.5, 0);                      // 立柱
+  const body = box(g, 0.26, 0.24, 0.4, 0x5e7ea8, 0, 1.12, 0);
+  P.door = box(g, 0.24, 0.2, 0.03, 0x4a6a8a, 0, 1.12, 0.2);      // 信箱门（可开）
+  box(g, 0.03, 0.06, 0.03, C.dark, 0.08, 1.12, 0.225);
+  return { group: g, parts: P };
+}
+
+function flowerbed() {
+  // 花坛：木框 + 土面 + 小花
+  const g = new THREE.Group();
+  box(g, 1.7, 0.28, 0.06, C.woodDark, 0, 0.14, -0.42);
+  box(g, 1.7, 0.28, 0.06, C.woodDark, 0, 0.14, 0.42);
+  box(g, 0.06, 0.28, 0.9, C.woodDark, -0.82, 0.14, 0);
+  box(g, 0.06, 0.28, 0.9, C.woodDark, 0.82, 0.14, 0);
+  box(g, 1.58, 0.06, 0.78, 0x5a4632, 0, 0.24, 0);                // 土面
+  for (let i = 0; i < 7; i++) {
+    const fl = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6),
+      mat([0xe86a8a, 0xf0c060, 0xd8704a][i % 3]));
+    fl.position.set(-0.6 + i * 0.2, 0.36, (i % 2 ? 0.14 : -0.12));
+    fl.castShadow = true;
+    g.add(fl);
+  }
+  return { group: g, parts: {} };
+}
+
 // ---------- 布局目录 ----------
 // slots: key/type/name/cap/offset/allowFold/needsTag/openable(引用 parts 的键与动作)
 export const CATALOG = [
@@ -369,12 +437,12 @@ export const CATALOG = [
     ] },
   { id: 'carpetL', name: '地毯', room: 'living', pos: [-4.7, 0, -1.7], rotY: 0, build: () => carpet(), collide: false,
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
-  { id: 'tvCabinet', name: '电视柜', room: 'living', pos: [-4.4, 0, -5.23], rotY: 0, build: tvCabinet,
+  { id: 'tvCabinet', name: '电视柜', room: 'living', pos: [-5.75, 0, -5.23], rotY: 0, build: tvCabinet,
     slots: [
       { key: 'cabL', type: 'interior', name: '左柜内', cap: [0.6, 0.32, 0.3], offset: [-0.4, 0.28, 0] },
       { key: 'cabR', type: 'interior', name: '右柜内', cap: [0.6, 0.32, 0.3], offset: [0.4, 0.28, 0] },
     ] },
-  { id: 'tv', name: '电视', room: 'living', pos: [-4.4, 0.56, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
+  { id: 'tv', name: '电视', room: 'living', pos: [-5.75, 0.56, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
   { id: 'plant', name: '盆栽', room: 'living', pos: [-0.7, 0, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
   { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-7.05, 0, -0.8], rotY: 0, build: floorLamp, slots: [] },
@@ -443,6 +511,73 @@ export const CATALOG = [
     ] },
   { id: 'pictureFrame', name: '相框', room: 'study', pos: [4.35, 0.76, 5.28], rotY: Math.PI, build: pictureFrame, collide: false,
     slots: [{ key: 'behind', type: 'behind', name: '相框后面', cap: [0.3, 0.22, 0.02], offset: [0, 0.16, -0.03], needsTag: 'thin' }] },
+
+  // —— 二楼 · 家庭厅（y=3.15）——
+  { id: 'sofa2', name: '沙发', room: 'lounge2', pos: [-5.3, 3.15, -0.5], rotY: Math.PI, build: sofa,
+    slots: [{ key: 'under', type: 'under', name: '沙发底下', cap: [1.5, 0.11, 0.5], offset: [0, 0.07, 0.05] }] },
+  { id: 'coffeeTable2', name: '茶几', room: 'lounge2', pos: [-5.3, 3.15, -1.7], rotY: 0, build: coffeeTable,
+    slots: [
+      { key: 'top', type: 'top', name: '桌面上', cap: [0.9, 0.2, 0.45], offset: [0, 0.475, 0] },
+      { key: 'shelf', type: 'top', name: '隔板上', cap: [0.75, 0.12, 0.35], offset: [0, 0.175, 0] },
+    ] },
+  { id: 'carpet2', name: '地毯', room: 'lounge2', pos: [-4.7, 3.15, -1.7], rotY: 0, build: () => carpet(), collide: false,
+    slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
+  { id: 'bookshelf2', name: '书架', room: 'lounge2', pos: [-7.28, 3.15, -1.4], rotY: Math.PI / 2, build: bookshelf,
+    slots: [
+      { key: 'shelf1', type: 'top', name: '第1层', cap: [0.8, 0.3, 0.22], offset: [0, 0.115, 0] },
+      { key: 'shelf4', type: 'top', name: '第4层', cap: [0.8, 0.3, 0.22], offset: [0, 1.435, 0] },
+      { key: 'pages1', type: 'pages', name: '书页间·上排', cap: [0.26, 0.3, 0.008], offset: [-0.2, 0.68, 0], needsTag: 'paper', allowFold: true, bookIndex: 3 },
+      { key: 'pages2', type: 'pages', name: '书页间·下排', cap: [0.26, 0.3, 0.008], offset: [0.15, 1.12, 0], needsTag: 'paper', allowFold: true, bookIndex: 14 },
+    ] },
+  { id: 'plant2', name: '盆栽', room: 'lounge2', pos: [-0.7, 3.15, -4.9], rotY: 0, build: plant,
+    slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
+
+  // —— 二楼 · 储物间（楼梯西侧，注意避开门洞 x>4.6, z<-4.55）——
+  { id: 'shelfUnit', name: '储物架', room: 'storage', pos: [6.9, 3.15, -2.2], rotY: -Math.PI / 2, build: shelfUnit,
+    slots: [
+      { key: 'low', type: 'interior', name: '下层格', cap: [0.8, 0.5, 0.26], offset: [0, 0.33, 0] },
+      { key: 'mid', type: 'interior', name: '中层格', cap: [0.8, 0.5, 0.26], offset: [0, 0.91, 0] },
+      { key: 'top', type: 'top', name: '顶板上', cap: [0.8, 0.25, 0.26], offset: [0, 1.82, 0] },
+    ] },
+  { id: 'crate1', name: '纸箱', room: 'storage', pos: [3.6, 3.15, -1.2], rotY: 0.3, build: crate,
+    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.2, 0] }] },
+  { id: 'crate2', name: '纸箱', room: 'storage', pos: [2.6, 3.15, -2.6], rotY: -0.4, build: crate,
+    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.2, 0] }] },
+
+  // —— 二楼 · 主卧 ——
+  { id: 'bed2', name: '大床', room: 'master', pos: [-6.39, 3.15, 3.2], rotY: Math.PI / 2, build: bed,
+    slots: [{ key: 'under', type: 'under', name: '床底下', cap: [1.3, 0.14, 1.7], offset: [0, 0.09, 0.1] }] },
+  { id: 'wardrobe2', name: '衣柜', room: 'master', pos: [-1.5, 3.15, 5.06], rotY: Math.PI, build: wardrobe,
+    slots: [
+      { key: 'hang', type: 'interior', name: '挂衣区', cap: [0.9, 1.35, 0.4], offset: [0, 1.05, 0] },
+      { key: 'topShelf', type: 'interior', name: '顶隔板上', cap: [0.9, 0.25, 0.4], offset: [0, 1.72, 0] },
+    ] },
+  { id: 'dresser2', name: '斗柜', room: 'master', pos: [-2.2, 3.15, 0.33], rotY: 0, build: dresser,
+    slots: [
+      { key: 'drawer1', type: 'drawer', name: '上抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.58, 0] },
+      { key: 'drawer2', type: 'drawer', name: '下抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.3, 0] },
+    ] },
+  { id: 'nightstand2', name: '床头柜', room: 'master', pos: [-7.22, 3.15, 4.35], rotY: Math.PI / 2, build: nightstand,
+    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.38, 0] }] },
+
+  // —— 二楼 · 儿童房 ——
+  { id: 'bedKids', name: '儿童床', room: 'kids', pos: [6.4, 3.15, 3.9], rotY: -Math.PI / 2, build: bed,
+    slots: [{ key: 'under', type: 'under', name: '床底下', cap: [1.3, 0.14, 1.7], offset: [0, 0.09, 0.1] }] },
+  { id: 'toyChest', name: '玩具箱', room: 'kids', pos: [3.0, 3.15, 4.9], rotY: Math.PI, build: chest,
+    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.52, 0.28, 0.34], offset: [0, 0.1, 0] }] },
+  { id: 'desk2', name: '小书桌', room: 'kids', pos: [1.4, 3.15, 0.45], rotY: 0, build: desk,
+    slots: [
+      { key: 'top', type: 'top', name: '桌面上', cap: [1.1, 0.2, 0.45], offset: [0, 0.79, 0.02] },
+      { key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.4, 0.08, 0.36], offset: [0.35, 0.63, 0] },
+    ] },
+
+  // —— 庭院 ——
+  { id: 'bench', name: '长椅', room: 'yard', pos: [4.5, 0, 6.6], rotY: Math.PI, build: bench,
+    slots: [{ key: 'under', type: 'under', name: '椅面下', cap: [1.2, 0.16, 0.4], offset: [0, 0.2, 0] }] },
+  { id: 'mailbox', name: '信箱', room: 'yard', pos: [-1.6, 0, 7.7], rotY: Math.PI, build: mailbox,
+    slots: [{ key: 'inner', type: 'interior', name: '信箱里', cap: [0.16, 0.12, 0.28], offset: [0, 1.12, 0] }] },
+  { id: 'flowerbed', name: '花坛', room: 'yard', pos: [5.5, 0, 6.9], rotY: 0, build: flowerbed,
+    slots: [{ key: 'soil', type: 'soil', name: '花坛土里', cap: [1.4, 0.06, 0.6], offset: [0, 0.26, 0] }] },
 ];
 
 // ---------- 总装 ----------

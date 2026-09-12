@@ -61,40 +61,39 @@ export class FPPlayer {
     if (k['KeyA']) fx -= 1;
     if (k['KeyD']) fx += 1;
     const moving = fx !== 0 || fz !== 0;
+    const crouching = k['ControlLeft'] || k['KeyC'];
     const speed = (k['ShiftLeft'] || k['ShiftRight']) ? this.runSpeed : this.walkSpeed;
 
     if (moving) {
       const inv = 1 / Math.hypot(fx, fz);
       fx *= inv; fz *= inv;
       const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
-      // 相机前向为 -Z，绕 yaw 旋转
       const dx = (fx * cos + fz * sin) * speed * dt;
       const dz = (fz * cos - fx * sin) * speed * dt;
       this.pos.x += dx;
       this.pos.z += dz;
     }
 
-    // 重力（地面 y=0）
-    this.vy -= 18 * dt;
-    this.pos.y += this.vy * dt;
-    if (this.pos.y <= 0) { this.pos.y = 0; this.vy = 0; }
-
-    // 下蹲（Ctrl/C）：压低视线，方便看沙发底、床底
-    const crouching = k['ControlLeft'] || k['KeyC'];
-    const targetEye = crouching ? 0.55 : 1.62;
-    this.eyeHeight += (targetEye - this.eyeHeight) * Math.min(1, dt * 10);
-
-    // 圆柱 vs AABB 碰撞（两轮迭代处理拐角）
+    // ---- 多层支持物理：台阶自动上步 / 二楼楼板 / 楼梯 ----
+    const STEP = 0.3;        // 可迈上的最大高度差
+    const feet = this.pos.y;
+    let support = 0;         // 脚下的支撑面高度（默认地面）
     for (let pass = 0; pass < 2; pass++) {
       for (const c of colliders) {
-        if (c.maxY <= 0.12 || c.minY >= 1.75) continue; // 只挡身体高度内的箱子
+        // 圆 vs AABB 的 XZ 相交
         const nx = Math.max(c.minX, Math.min(this.pos.x, c.maxX));
         const nz = Math.max(c.minZ, Math.min(this.pos.z, c.maxZ));
         let dx = this.pos.x - nx, dz = this.pos.z - nz;
         const d2 = dx * dx + dz * dz;
         if (d2 >= this.radius * this.radius) continue;
+        if (c.maxY <= feet + STEP + 0.01) {
+          // 台阶/矮台：记为支撑面候选，不阻挡
+          support = Math.max(support, c.maxY);
+          continue;
+        }
+        if (c.minY >= feet + 1.8) continue;  // 头顶以上的结构不碰撞
+        // 阻挡：推出
         if (d2 < 1e-8) {
-          // 圆心在箱内：沿最浅穿透轴推出
           const px = Math.min(this.pos.x - c.minX, c.maxX - this.pos.x);
           const pz = Math.min(this.pos.z - c.minZ, c.maxZ - this.pos.z);
           if (px < pz) this.pos.x += (this.pos.x - (c.minX + c.maxX) / 2 > 0 ? px + this.radius : -(px + this.radius));
@@ -107,11 +106,29 @@ export class FPPlayer {
       }
     }
 
+    // 重力 + 落到支撑面
+    this.vy -= 18 * dt;
+    this.pos.y += this.vy * dt;
+    if (this.pos.y <= support && this.vy <= 0) {
+      this.pos.y = support;
+      this.vy = 0;
+    }
+
+    // 下蹲（Ctrl/C）
+    const targetEye = crouching ? 0.55 : 1.62;
+    this.eyeHeight += (targetEye - this.eyeHeight) * Math.min(1, dt * 10);
+
+    // 跟拍感：行走视点起伏 + 相机高度平滑
+    if (moving && this.vy === 0) this._bob = (this._bob || 0) + dt * (speed * 2.1);
+    const bobY = moving && this.vy === 0 ? Math.sin(this._bob || 0) * 0.032 : 0;
+    const targetCamY = this.pos.y + this.eyeHeight + bobY;
+    this._camY = (this._camY === undefined) ? targetCamY : this._camY + (targetCamY - this._camY) * Math.min(1, dt * 11);
+
     this._applyCamera();
   }
 
   _applyCamera() {
-    this.camera.position.set(this.pos.x, this.pos.y + this.eyeHeight, this.pos.z);
+    this.camera.position.set(this.pos.x, this._camY ?? (this.pos.y + this.eyeHeight), this.pos.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
   }
 

@@ -35,6 +35,12 @@ const OPENABLE_DEFS = {
   computerCase: [
     { key: 'inner', part: 'sidePanel', kind: 'hinge', hinge: [0.1, 0.23, -0.225], axis: 'y', open: 2.1 },
   ],
+  toyChest: [
+    { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.385, -0.21], axis: 'x', open: -1.9 },
+  ],
+  mailbox: [
+    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.12, 1.12, 0.2], axis: 'y', open: -1.9 },
+  ],
   carpetL: [
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.42, hinge: [0, 0, 0.9] },
   ],
@@ -64,6 +70,8 @@ export class Interaction {
     this.inspecting = null;      // 检查特写状态
     this.promptEl = document.getElementById('interact-prompt');
     this.enabled = false;        // 找家阶段才启用 E 交互
+    this.hideMode = false;       // 藏家第一视角藏匿模式
+    this.onHideInteract = null;  // 藏匿模式：E 瞄准家具回调(piece)
     this._buildOpenables();
     this._bindKeys();
     ctx.tickHandlers.push((dt) => this.update(dt));
@@ -132,7 +140,9 @@ export class Interaction {
 
   _bindKeys() {
     this._onKey = (e) => {
-      if (!this.enabled || e.code !== 'KeyE') return;
+      if (e.code !== 'KeyE') return;
+      if (this.hideMode) { this._act(); return; }
+      if (!this.enabled) return;
       this._act();
     };
     document.addEventListener('keydown', this._onKey);
@@ -212,7 +222,7 @@ export class Interaction {
   }
 
   _raycastPrompt() {
-    if (!this.enabled) return;
+    if (!this.enabled && !this.hideMode) return;
     let text = null;
     if (!document.pointerLockElement) {
       text = '点击画面锁定鼠标才能操作';
@@ -223,8 +233,14 @@ export class Interaction {
     }
     const hit = this._currentHit();
     if (hit && hit.dist < 2.5) {
-      if (hit.type === 'item') {
+      if (hit.type === 'item' && !this.hideMode) {
         text = `按 <b>E</b> 拿起「${itemById(hit.mesh.userData.itemId)?.name ?? '?'}」`;
+      } else if (this.hideMode) {
+        if (hit.type === 'piece') {
+          text = hit.piece.slots.length
+            ? `「${hit.piece.def.name}」—— 按 <b>E</b> 打开藏匿面板`
+            : `「${hit.piece.def.name}」没有可藏位置`;
+        }
       } else {
         const slot = this._exposedPickable(hit.piece);
         const hasOpenable = this.openEntries.some(e => e.pieceId === hit.piece.def.id);
@@ -281,6 +297,14 @@ export class Interaction {
   }
 
   _act() {
+    // 藏家藏匿模式：E 在家具上打开槽位面板
+    if (this.hideMode) {
+      const hit = this._lastHit;
+      if (hit && hit.type === 'piece' && hit.piece.slots.length && this.onHideInteract) {
+        this.onHideInteract(hit.piece);
+      }
+      return;
+    }
     // 检查特写模式下：E = 拿取槽内物品（没有则退出）
     if (this.inspecting) {
       const ins = this.inspecting;

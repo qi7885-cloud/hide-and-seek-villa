@@ -8,6 +8,7 @@ import { Interaction } from './interact.js';
 import { PlacementUI } from './placement.js';
 import { GodCamera, createAvatar, SpectatorPiP } from './spectator.js';
 import { Game } from './game.js';
+import { buildUpperFloor, buildYard } from './villa2.js';
 import { canHide } from './slots.js';
 import { itemById } from './items.js';
 import { SFX } from './audio.js';
@@ -15,10 +16,13 @@ import { SFX } from './audio.js';
 const container = document.getElementById('app');
 const ctx = createScene(container);
 const { scene, camera, tickHandlers } = ctx;
+camera.layers.enable(2);   // 主相机可见屋顶层（院内/院内视角）
 
 // ---- 别墅 ----
 const colliders = [];
 const villa = buildVilla(scene, colliders);
+buildUpperFloor(scene, colliders);   // 二楼+楼梯+屋顶
+buildYard(scene, colliders);         // 庭院
 
 // ---- 家具与槽位 ----
 const pieces = buildFurniture(scene, colliders);
@@ -34,7 +38,7 @@ const interact = new Interaction(ctx, pieces, null, player);
 
 // ---- 藏家放置 UI ----
 const placement = new PlacementUI(interact, pieces, camera);
-placement.initPick(THREE, ctx.renderer.domElement);
+interact.onHideInteract = (piece) => placement.openSlotPanelFor(piece);
 
 // ---- 上帝视角 / 角色替身 / 画中画观战 ----
 const godCam = new GodCamera(camera, ctx.renderer.domElement);
@@ -86,13 +90,17 @@ godCam.autoRotate = true;
 document.getElementById('btn-start').onclick = () => {
   game.settings.rounds = +document.getElementById('opt-rounds').value;
   game.settings.seekTime = +document.getElementById('opt-time').value;
+  game.settings.hideCount = +document.getElementById('opt-hidecount').value;
   game.settings.hints = document.getElementById('opt-hints').value === 'on';
   document.getElementById('screen-menu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+  godCam.enabled = false;
+  godCam.autoRotate = false;
   game.startRound();
 };
 document.getElementById('btn-cover-continue').onclick = () => game.beginSeek();
 document.getElementById('btn-next-round').onclick = () => game.nextRound();
+document.getElementById('btn-exit').onclick = (e) => { e.stopPropagation(); game.quitToMenu(); };
 
 // 计时 tick 挂进主循环
 tickHandlers.push((dt) => game.tick(dt));
