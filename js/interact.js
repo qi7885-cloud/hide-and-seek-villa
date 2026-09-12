@@ -202,6 +202,15 @@ export class Interaction {
     return null;
   }
 
+  // 容器已打开时，其中的物品视为可直接拿取（抽屉/冰箱/柜门/掀开的地毯/抽出的书）
+  _exposedPickable(piece) {
+    return piece.slots.find(s => {
+      if (!s.filledWith) return false;
+      const e = this.openBySlotKey[`${piece.def.id}:${s.key}`];
+      return e && e.t > 0.7;
+    });
+  }
+
   _raycastPrompt() {
     if (!this.enabled) return;
     let text = null;
@@ -217,8 +226,11 @@ export class Interaction {
       if (hit.type === 'item') {
         text = `按 <b>E</b> 拿起「${itemById(hit.mesh.userData.itemId)?.name ?? '?'}」`;
       } else {
+        const slot = this._exposedPickable(hit.piece);
         const hasOpenable = this.openEntries.some(e => e.pieceId === hit.piece.def.id);
-        if (hasOpenable) {
+        if (slot) {
+          text = `按 <b>E</b> 拿起「${itemById(slot.filledWith).name}」`;
+        } else if (hasOpenable) {
           const anyClosed = this.openEntries.some(e => e.pieceId === hit.piece.def.id && e.target === 0);
           text = `${hit.piece.def.name} —— 按 <b>E</b> ${anyClosed ? '打开' : '关上'}`;
         } else if (hit.piece.slots.some(s => s.type === 'interior' || s.type === 'soil')) {
@@ -282,6 +294,14 @@ export class Interaction {
     if (!hit || hit.dist > 2.5) return;
     if (hit.type === 'item') {
       if (this.onPickup) this.onPickup(hit.mesh.userData, hit.mesh);
+      return;
+    }
+    // 打开的容器：直接拿取其中的物品
+    const slot = this._exposedPickable(hit.piece);
+    if (slot) {
+      const mesh = this.placedItems.find(m =>
+        m.userData.pieceId === hit.piece.def.id && m.userData.slotKey === slot.key);
+      if (mesh && this.onPickup) this.onPickup(mesh.userData, mesh);
       return;
     }
     // 先尝试开合（柜门/抽屉/地毯/书本）

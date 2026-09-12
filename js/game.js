@@ -21,6 +21,7 @@ export class Game {
     this.round = 0;
     this.score = { hider: 0, seeker: 0 };  // 藏家得分=成功藏过；找家得分=找到
     this.timer = 0;
+    this.hintCooldown = 0;
     this.target = null;                    // 本回合被藏的物品 {itemId, pieceId, slotKey}
     this.onToast = null;
 
@@ -39,6 +40,7 @@ export class Game {
     this.player.setLock(false);
     this.godCam.enabled = true;
     this.placement.show();
+    this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 藏家布置中`);
     this.toast(`第 ${this.round}/${this.settings.rounds} 回合 —— 你是藏家，藏一件东西吧`);
   }
 
@@ -59,11 +61,13 @@ export class Game {
     document.getElementById('screen-cover').classList.add('hidden');
     this._setPhase(Phase.SEEK);
     this.timer = this.settings.seekTime;
+    this.hintCooldown = 0;
     this.player.frozen = false;
     this.player.setLock(true);
     this.player.teleport(this.villa.spawn.seeker.pos, this.villa.spawn.seeker.yaw);
     this.interact.enabled = true;
     this.pip.enabled = true;           // 藏家第三人称观战画中画
+    this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 限时搜索`);
     this.toast('你是找家！限时找出被藏起来的东西');
   }
 
@@ -82,6 +86,7 @@ export class Game {
     this.player.frozen = true;
     this.pip.enabled = false;
     document.getElementById('timer').classList.add('hidden');
+    document.getElementById('hint-chip').classList.add('hidden');
     if (found) this.score.seeker++;
     else this.score.hider++;
     this._setPhase(Phase.RESULT);
@@ -120,7 +125,7 @@ export class Game {
     this.startRound();
   }
 
-  // ---- 计时 ----
+  // ---- 计时 + 冷热提示 ----
   tick(dt) {
     if (this.phase !== Phase.SEEK) return;
     this.timer -= dt;
@@ -130,7 +135,35 @@ export class Game {
     const s = Math.max(0, Math.floor(this.timer % 60));
     tEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     tEl.classList.toggle('urgent', this.timer < 20);
+
+    // 冷热提示：每2.5秒按与目标物的距离刷新
+    this.hintCooldown -= dt;
+    const chip = document.getElementById('hint-chip');
+    if (!this.settings.hints) { chip.classList.add('hidden'); return; }
+    if (this.hintCooldown <= 0) {
+      this.hintCooldown = 2.5;
+      const targetMesh = this.interact.placedItems.find(m => m.userData.itemId === this.target?.itemId);
+      if (targetMesh) {
+        const d = targetMesh.position.distanceTo(this.player.pos);
+        const [cls, text] =
+          d < 1.6 ? ['blazing', '🔥 烫烫烫！就在附近'] :
+          d < 3.5 ? ['hot', '🥵 很热，越来越近了'] :
+          d < 6   ? ['warm', '😊 有一点温热'] :
+          d < 9   ? ['cool', '🙂 有点凉，换个房间？'] :
+                    ['cold', '🥶 很冷，完全不对'];
+        chip.classList.remove('cold', 'cool', 'warm', 'hot', 'blazing');
+        chip.classList.add(cls);
+        chip.textContent = text;
+        chip.classList.remove('hidden');
+      }
+    }
     if (this.timer <= 0) this._endRound(false);
+  }
+
+  _banner(text) {
+    const el = document.getElementById('role-banner');
+    el.textContent = text;
+    el.classList.remove('hidden');
   }
 
   _setPhase(p) { this.phase = p; }
