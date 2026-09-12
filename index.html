@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>你藏我找 · 别墅版</title>
 <link rel="stylesheet" href="css/style.css">
+<script>
+  // 全局错误收集（调试用）
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push((e.message || '?') + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  window.addEventListener('unhandledrejection', e => window.__errors.push('rejection: ' + ((e.reason && e.reason.message) || e.reason)));
+</script>
 <script type="importmap">
 {
   "imports": {

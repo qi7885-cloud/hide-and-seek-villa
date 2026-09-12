@@ -153,10 +153,14 @@ function chair() {
 }
 
 function cup() {
+  // 真实空心杯：开口向上，能直接看到内部
   const g = new THREE.Group();
-  const body = cyl(g, 0.045, 0.11, C.white, 0, 0.055, 0);
-  const inner = cyl(g, 0.038, 0.02, 0xdad8d2, 0, 0.1, 0);
-  inner.castShadow = false;
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.045, 0.04, 0.11, 16, 1, true),
+    mat(C.white, { side: THREE.DoubleSide })
+  );
+  wall.position.y = 0.055; wall.castShadow = true; g.add(wall);
+  cyl(g, 0.04, 0.008, 0xdad8d2, 0, 0.006, 0);                    // 杯底
   const handle = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.007, 8, 14, Math.PI), mat(C.white));
   handle.position.set(0.05, 0.06, 0);
   handle.rotation.z = -Math.PI / 2;
@@ -165,13 +169,18 @@ function cup() {
 }
 
 function fruitBowl() {
+  // 空心果盘
   const g = new THREE.Group();
-  cyl(g, 0.15, 0.055, 0x7fa88a, 0, 0.028, 0);
-  cyl(g, 0.13, 0.02, 0x688f72, 0, 0.05, 0).castShadow = false;
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.11, 0.07, 18, 1, true),
+    mat(0x7fa88a, { side: THREE.DoubleSide })
+  );
+  wall.position.y = 0.035; wall.castShadow = true; g.add(wall);
+  cyl(g, 0.12, 0.012, 0x688f72, 0, 0.012, 0).castShadow = false; // 盘底
   const f1 = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), mat(0xd97b4a));
-  f1.position.set(0.07, 0.075, 0.04); f1.castShadow = true; g.add(f1);
+  f1.position.set(0.08, 0.05, 0.03); f1.castShadow = true; g.add(f1);
   const f2 = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), mat(0xc9403a));
-  f2.position.set(-0.06, 0.07, -0.05); f2.castShadow = true; g.add(f2);
+  f2.position.set(-0.06, 0.045, -0.05); f2.castShadow = true; g.add(f2);
   return { group: g, parts: {} };
 }
 
@@ -184,9 +193,14 @@ function microwave() {
 }
 
 function trashBin() {
+  // 空心垃圾桶
   const g = new THREE.Group();
-  cyl(g, 0.155, 0.42, C.gray, 0, 0.21, 0);
-  cyl(g, 0.13, 0.02, 0x5a5d60, 0, 0.06, 0).castShadow = false;   // 桶底内面
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.155, 0.13, 0.42, 16, 1, true),
+    mat(C.gray, { side: THREE.DoubleSide })
+  );
+  wall.position.y = 0.21; wall.castShadow = true; g.add(wall);
+  cyl(g, 0.13, 0.015, 0x5a5d60, 0, 0.06, 0).castShadow = false;  // 桶底
   return { group: g, parts: {} };
 }
 
@@ -320,7 +334,7 @@ export const CATALOG = [
       { key: 'shelf', type: 'top', name: '隔板上', cap: [0.75, 0.12, 0.35], offset: [0, 0.175, 0] },
     ] },
   { id: 'carpetL', name: '地毯', room: 'living', pos: [-4.7, 0, -1.7], rotY: 0, build: () => carpet(), collide: false,
-    slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.05, 1.4], offset: [0, 0.03, 0] }] },
+    slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
   { id: 'tvCabinet', name: '电视柜', room: 'living', pos: [-4.4, 0, -5.23], rotY: 0, build: tvCabinet,
     slots: [
       { key: 'cabL', type: 'interior', name: '左柜内', cap: [0.6, 0.32, 0.3], offset: [-0.4, 0.28, 0] },
@@ -340,8 +354,8 @@ export const CATALOG = [
     ] },
   { id: 'fridge', name: '冰箱', room: 'kitchen', pos: [7.06, 0, -0.5], rotY: -Math.PI / 2, build: fridge,
     slots: [
-      { key: 'inner', type: 'interior', name: '冷藏室', cap: [0.5, 1.1, 0.4], offset: [0, 1.0, 0] },
-      { key: 'freezer', type: 'interior', name: '冷冻室', cap: [0.5, 0.22, 0.4], offset: [0, 0.35, 0] },
+      { key: 'inner', type: 'interior', name: '冷藏室', cap: [0.5, 1.1, 0.4], offset: [0, 0.85, 0] },
+      { key: 'freezer', type: 'interior', name: '冷冻室', cap: [0.5, 0.2, 0.4], offset: [0, 0.22, 0] },
     ] },
   { id: 'diningTable', name: '餐桌', room: 'kitchen', pos: [3.4, 0, -2.3], rotY: 0, build: diningTable,
     slots: [{ key: 'top', type: 'top', name: '桌面上', cap: [1.2, 0.25, 0.7], offset: [0, 0.8, 0] }] },
@@ -350,12 +364,12 @@ export const CATALOG = [
   { id: 'chair3', name: '餐椅', room: 'kitchen', pos: [3.4, 0, -1.5], rotY: Math.PI, build: chair, slots: [] },
   { id: 'chair4', name: '餐椅', room: 'kitchen', pos: [3.4, 0, -3.1], rotY: 0, build: chair, slots: [] },
   { id: 'cup', name: '水杯', room: 'kitchen', pos: [7.13, 0.9, -4.4], rotY: 0, build: cup, collide: false,
-    slots: [{ key: 'inner', type: 'interior', name: '杯子里', cap: [0.075, 0.09, 0.075], offset: [0, 0.055, 0], allowFold: true }] },
+    slots: [{ key: 'inner', type: 'interior', name: '杯子里', cap: [0.082, 0.1, 0.082], offset: [0, 0.06, 0], allowFold: true }] },
   { id: 'fruitBowl', name: '果盘', room: 'kitchen', pos: [3.4, 0.78, -2.3], rotY: 0, build: fruitBowl, collide: false,
-    slots: [{ key: 'inner', type: 'interior', name: '果盘里', cap: [0.22, 0.1, 0.22], offset: [0, 0.05, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '果盘里', cap: [0.22, 0.1, 0.22], offset: [0, 0.068, 0] }] },
   { id: 'microwave', name: '微波炉', room: 'kitchen', pos: [7.13, 0.9, -3.1], rotY: -Math.PI / 2, build: microwave, collide: false, slots: [] },
   { id: 'trashBin', name: '垃圾桶', room: 'kitchen', pos: [5.8, 0, -0.6], rotY: 0, build: trashBin,
-    slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.24, 0.32, 0.24], offset: [0, 0.12, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.24, 0.32, 0.24], offset: [0, 0.228, 0] }] },
 
   // —— 卧室 ——
   { id: 'bed', name: '床', room: 'bedroom', pos: [-6.39, 0, 3.2], rotY: Math.PI / 2, build: bed,
@@ -373,7 +387,7 @@ export const CATALOG = [
       { key: 'drawer2', type: 'drawer', name: '下抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.3, 0] },
     ] },
   { id: 'rugB', name: '床边毯', room: 'bedroom', pos: [-4.3, 0, 2.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
-    slots: [{ key: 'under', type: 'under', name: '毯子下面', cap: [1.2, 0.05, 0.6], offset: [0, 0.03, 0] }] },
+    slots: [{ key: 'under', type: 'under', name: '毯子下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
 
   // —— 书房 ——
   { id: 'desk', name: '书桌', room: 'study', pos: [3.75, 0, 5.09], rotY: Math.PI, build: desk,
