@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>你藏我找 · 别墅版</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+  <!-- 3D 画布容器 -->
+  <div id="app"></div>
+
+  <!-- HUD（游戏内界面层） -->
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="interact-prompt" class="hidden"></div>
+    <div id="timer" class="hidden">02:00</div>
+    <div id="hint-chip" class="hidden"></div>
+    <div id="role-banner" class="hidden"></div>
+    <div id="toast" class="hidden"></div>
+  </div>
+
+  <!-- 藏家放置面板（选择槽位） -->
+  <div id="slot-panel" class="hidden"></div>
+
+  <!-- 藏家物品栏（选择要藏的物品） -->
+  <div id="item-tray" class="hidden"></div>
+
+  <!-- 全屏遮罩层：主菜单 / 传递设备 / 结算 -->
+  <div id="screen-menu" class="screen">
+    <div class="screen-card">
+      <h1>你藏我找 · 别墅版</h1>
+      <p class="subtitle">一人在别墅里藏东西，另一人限时搜出来</p>
+      <div class="menu-options">
+        <label>回合数
+          <select id="opt-rounds">
+            <option value="1">1</option>
+            <option value="3" selected>3</option>
+            <option value="5">5</option>
+          </select>
+        </label>
+        <label>搜索时间
+          <select id="opt-time">
+            <option value="120" selected>2 分钟</option>
+            <option value="180">3 分钟</option>
+            <option value="300">5 分钟</option>
+          </select>
+        </label>
+        <label>距离提示
+          <select id="opt-hints">
+            <option value="on" selected>开启（冷热提示）</option>
+            <option value="off">关闭（硬核模式）</option>
+          </select>
+        </label>
+      </div>
+      <button id="btn-start" class="btn-primary">开始游戏</button>
+      <p class="help-text">藏家：WASD 移动 / 点击家具选槽位藏东西<br>找家：WASD 移动 / 鼠标转动视角 / E 键互动</p>
+    </div>
+  </div>
+
+  <div id="screen-cover" class="screen hidden">
+    <div class="screen-card">
+      <h1>请把电脑交给“找”的玩家</h1>
+      <p class="subtitle">藏匿已完成，搜索即将开始</p>
+      <button id="btn-cover-continue" class="btn-primary">我是找家，开始搜索！</button>
+    </div>
+  </div>
+
+  <div id="screen-result" class="screen hidden">
+    <div class="screen-card">
+      <h1 id="result-title">找到了！</h1>
+      <p id="result-detail" class="subtitle"></p>
+      <p id="result-score" class="score"></p>
+      <button id="btn-next-round" class="btn-primary">下一回合</button>
+    </div>
+  </div>
+
+  <!-- 加载提示 -->
+  <div id="loading" class="screen"><div class="screen-card"><h1>加载中…</h1></div></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
