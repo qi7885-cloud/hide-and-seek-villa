@@ -1,6 +1,7 @@
 // furniture.js — 程序化家具库：建造函数 + 全屋布局 + 槽位元数据
 // 坐标约定：每件家具 Group 原点在占地中心、地面高度；正面朝局部 +z，放置时用 rotY 转向
 import * as THREE from 'three';
+import { rugTexture } from './textures.js';
 
 // ---------- 调色板 ----------
 const C = {
@@ -38,13 +39,23 @@ function legs4(g, w, d, h, color, t = 0.06) {
 // 每个 builder 返回 { group, parts } ；parts 里放需要开合动画的节点（M4 用）
 
 function sofa() {
+  // 绿色丝绒沙发 + 奶油抱枕 + 白色盖毯（参考法式客厅）
   const g = new THREE.Group(), P = {};
-  legs4(g, 1.9, 0.85, 0.14, C.woodDark);
-  box(g, 1.9, 0.3, 0.85, C.sofa, 0, 0.29, 0);                    // 底座
-  box(g, 1.9, 0.45, 0.22, C.sofaDark, 0, 0.62, -0.315);          // 靠背
-  box(g, 0.22, 0.32, 0.8, C.sofaDark, -0.84, 0.58, 0.02);        // 扶手左
-  box(g, 0.22, 0.32, 0.8, C.sofaDark, 0.84, 0.58, 0.02);         // 扶手右
-  for (let i = 0; i < 3; i++) box(g, 0.55, 0.14, 0.7, C.cushion, -0.6 + i * 0.6, 0.51, 0.05); // 坐垫
+  const VELVET = 0x5e7a52, VELVET_D = 0x506a46, CREAM = 0xe8e2d2;
+  legs4(g, 1.9, 0.85, 0.14, 0x4a3826);
+  box(g, 1.9, 0.3, 0.85, VELVET, 0, 0.29, 0);                    // 底座
+  box(g, 1.9, 0.45, 0.22, VELVET_D, 0, 0.62, -0.315);            // 靠背
+  box(g, 0.22, 0.32, 0.8, VELVET_D, -0.84, 0.58, 0.02);          // 扶手左
+  box(g, 0.22, 0.32, 0.8, VELVET_D, 0.84, 0.58, 0.02);           // 扶手右
+  for (let i = 0; i < 3; i++) box(g, 0.55, 0.14, 0.7, CREAM, -0.6 + i * 0.6, 0.51, 0.05); // 坐垫
+  // 丝绒竖向拉槽（坐垫分缝感）
+  for (let i = 0; i < 3; i++) box(g, 0.56, 0.02, 0.71, VELVET, -0.6 + i * 0.6, 0.585, 0.05);
+  // 靠枕
+  box(g, 0.4, 0.36, 0.13, CREAM, -0.5, 0.72, -0.24).rotation.x = -0.15;
+  box(g, 0.4, 0.36, 0.13, 0xd8cfba, 0.28, 0.72, -0.24).rotation.x = -0.15;
+  // 白色针织盖毯（搭在扶手垂下来）
+  box(g, 0.5, 0.04, 0.62, 0xf2ede0, 0.62, 0.76, 0.1).rotation.z = 0.06;
+  box(g, 0.5, 0.3, 0.04, 0xf2ede0, 0.62, 0.58, 0.4);
   return { group: g, parts: P };
 }
 
@@ -78,12 +89,14 @@ function tv() {
 
 function carpet(w = 2.6, d = 1.8) {
   const g = new THREE.Group(), P = {};
-  const base = box(g, w, 0.022, d, C.rug, 0, 0.011, 0);
-  base.castShadow = false;
-  const border = box(g, w - 0.24, 0.006, d - 0.24, C.rugBorder, 0, 0.025, 0);
-  border.castShadow = false;
-  box(g, w - 0.7, 0.004, d - 0.7, C.rug, 0, 0.028, 0).castShadow = false;
-  P.lift = base; // 掀地毯动画作用在整块上（M4 对 group 操作）
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(w, 0.022, d),
+    new THREE.MeshLambertMaterial({ map: rugTexture(w, d) })
+  );
+  base.position.y = 0.011;
+  base.receiveShadow = true;
+  g.add(base);
+  P.lift = base;
   return { group: g, parts: P };
 }
 
@@ -138,9 +151,30 @@ function fridge() {
 }
 
 function diningTable() {
+  // 圆形实木餐桌（中心柱脚）
   const g = new THREE.Group();
-  legs4(g, 1.5, 0.9, 0.72, C.woodDark, 0.07);
-  box(g, 1.5, 0.06, 0.9, C.wood, 0, 0.75, 0);
+  cyl(g, 0.09, 0.68, C.woodDark, 0, 0.34, 0);                    // 中心柱
+  cyl(g, 0.32, 0.05, C.woodDark, 0, 0.025, 0);                   // 底盘
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.05, 28), mat(C.wood));
+  top.position.y = 0.73;
+  top.castShadow = true; top.receiveShadow = true;
+  g.add(top);
+  return { group: g, parts: {} };
+}
+
+function armchair() {
+  // 泰迪绒单人休闲椅
+  const g = new THREE.Group();
+  const FUR = 0xd9c9ae;
+  cyl(g, 0.4, 0.26, FUR, 0, 0.2, 0);                             // 坐墩
+  const back = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.42, 0.55, 20, 1, true, -Math.PI * 0.92, Math.PI * 0.92),
+    mat(FUR, { side: THREE.DoubleSide })
+  );
+  back.position.y = 0.5;
+  back.castShadow = true;
+  g.add(back);
+  cyl(g, 0.36, 0.07, 0xcfb99a, 0, 0.36, 0).castShadow = true; // 坐垫
   return { group: g, parts: {} };
 }
 
@@ -344,6 +378,7 @@ export const CATALOG = [
   { id: 'plant', name: '盆栽', room: 'living', pos: [-0.7, 0, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
   { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-7.05, 0, -0.8], rotY: 0, build: floorLamp, slots: [] },
+  { id: 'armchair', name: '休闲椅', room: 'living', pos: [-0.85, 0, -1.05], rotY: Math.PI / 2 + 0.5, build: armchair, slots: [] },
 
   // —— 厨房 ——
   { id: 'counter', name: '橱柜', room: 'kitchen', pos: [7.13, 0, -3.7], rotY: -Math.PI / 2, build: counter,
@@ -358,7 +393,7 @@ export const CATALOG = [
       { key: 'freezer', type: 'interior', name: '冷冻室', cap: [0.5, 0.2, 0.4], offset: [0, 0.22, 0] },
     ] },
   { id: 'diningTable', name: '餐桌', room: 'kitchen', pos: [3.4, 0, -2.3], rotY: 0, build: diningTable,
-    slots: [{ key: 'top', type: 'top', name: '桌面上', cap: [1.2, 0.25, 0.7], offset: [0, 0.8, 0] }] },
+    slots: [{ key: 'top', type: 'top', name: '桌面上', cap: [1.2, 0.25, 0.7], offset: [0, 0.79, 0] }] },
   { id: 'chair1', name: '餐椅', room: 'kitchen', pos: [2.5, 0, -2.3], rotY: Math.PI / 2, build: chair, slots: [] },
   { id: 'chair2', name: '餐椅', room: 'kitchen', pos: [4.3, 0, -2.3], rotY: -Math.PI / 2, build: chair, slots: [] },
   { id: 'chair3', name: '餐椅', room: 'kitchen', pos: [3.4, 0, -1.5], rotY: Math.PI, build: chair, slots: [] },

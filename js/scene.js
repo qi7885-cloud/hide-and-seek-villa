@@ -7,10 +7,12 @@ export function createScene(container) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 性能上限：像素比≤2
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;   // 电影级色调映射
+  renderer.toneMappingExposure = 1.12;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87b5e0); // 天空蓝
+  scene.background = new THREE.Color(0x9cc2e0); // 天空蓝
 
   const camera = new THREE.PerspectiveCamera(
     70, window.innerWidth / window.innerHeight, 0.05, 200
@@ -18,11 +20,11 @@ export function createScene(container) {
   camera.position.set(0, 3, 10);
   camera.lookAt(0, 1, 0);
 
-  // 灯光：半球环境光 + 主方向光（带阴影）
-  const hemi = new THREE.HemisphereLight(0xdfeaf5, 0x8a7a66, 0.9);
+  // 灯光：暖调半球光 + 主方向光（带阴影）
+  const hemi = new THREE.HemisphereLight(0xf2e9dc, 0x9a8a74, 0.85);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff2d9, 1.6);
+  const sun = new THREE.DirectionalLight(0xffe7c4, 1.5);
   sun.position.set(12, 18, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);

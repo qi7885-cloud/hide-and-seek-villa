@@ -1,5 +1,8 @@
 // villa.js — 程序化别墅：4 房间一层，墙体带门窗开口，全部静态碰撞体
+// M9：真实化升级——人字拼地板/瓷砖纹理、拱形门洞、法式细部由 realism.js 叠加
 import * as THREE from 'three';
+import { herringboneTexture, tileTexture } from './textures.js';
+import { addRealism } from './realism.js';
 
 export const WALL_H = 2.9;          // 墙高
 export const EXT_T = 0.24;          // 外墙厚
@@ -121,18 +124,28 @@ export function buildVilla(scene, colliders) {
   buildWall(scene, colliders, { axis: 'z', at: 7.5 + EXT_T / 2, from: -5.5, to: 5.5, thickness: EXT_T, mat: extMat, frameMat,
     openings: [win(-2.75), win(2.75)] });                                   // 东墙
 
-  // 内墙：十字分隔 4 房间，各留门洞
+  // 内墙：十字分隔 4 房间，各留门洞（客厅↔厨房为1.4宽拱门洞）
   buildWall(scene, colliders, { axis: 'x', at: 0, from: -7.5, to: 7.5, thickness: INT_T, mat: intMat, frameMat,
     openings: [door(-3.75), door(3.75)] });                                 // 横墙：客厅↔卧室、厨房↔书房
   buildWall(scene, colliders, { axis: 'z', at: 0, from: -5.5, to: 5.5, thickness: INT_T, mat: intMat, frameMat,
-    openings: [door(-3), door(3)] });                                       // 竖墙：客厅↔厨房、卧室↔书房
+    openings: [{ at: -3, w: 1.4, y1: 2.15 }, door(3)] });                   // 竖墙：拱门 + 卧室↔书房
 
-  // 各房间地板
+  // 拱形门洞上方的弧形填充（椭圆拱：宽1.4，起拱1.75，顶2.15）
+  const AW = 0.7, SPRING = 1.75, ATOP = 2.15, RY = ATOP - SPRING;
+  for (let u = -0.65; u <= 0.66; u += 0.09) {
+    const yTop = SPRING + RY * Math.sqrt(Math.max(0, 1 - (u / AW) ** 2));
+    if (yTop < ATOP - 0.004) {
+      addBox(scene, colliders, 0, (yTop + ATOP) / 2, -3 + u, INT_T, ATOP - yTop, 0.095, intMat);
+    }
+  }
+
+  // 各房间地板（人字拼木地板 / 厨房瓷砖）
   for (const r of ROOMS) {
     const w = r.maxX - r.minX, d = r.maxZ - r.minZ;
+    const tex = r.id === 'kitchen' ? tileTexture(w, d) : herringboneTexture(w, d);
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(w, d),
-      new THREE.MeshLambertMaterial({ color: r.floor })
+      new THREE.MeshLambertMaterial({ map: tex })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.set((r.minX + r.maxX) / 2, 0.02, (r.minZ + r.maxZ) / 2);
@@ -157,10 +170,13 @@ export function buildVilla(scene, colliders) {
 
   // 各房间暖色顶灯（无阴影，低成本补光）
   for (const r of ROOMS) {
-    const l = new THREE.PointLight(0xffe3b8, 0.32, 9);
+    const l = new THREE.PointLight(0xffe3b8, 0.5, 9.5);
     l.position.set((r.minX + r.maxX) / 2, 2.55, (r.minZ + r.maxZ) / 2);
     scene.add(l);
   }
+
+  // 法式细部与软装：石膏线/踢脚线/灯槽/护墙板/窗帘/吊灯/相片墙
+  addRealism(scene);
 
   return { rooms: ROOMS, spawn: SPAWN, wallHeight: WALL_H };
 }
