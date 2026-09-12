@@ -18,6 +18,7 @@ export function createScene(container) {
   // 环境光照（PBR 材质的真实感来源）：室内辐射环境
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.45;   // 环境泛光减弱，避免室内过曝
 
   const camera = new THREE.PerspectiveCamera(
     70, window.innerWidth / window.innerHeight, 0.05, 200
