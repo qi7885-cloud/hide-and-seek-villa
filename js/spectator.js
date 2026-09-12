@@ -50,6 +50,7 @@ export class GodCamera {
 
   update() {
     if (!this.enabled) return;
+    if (this.autoRotate) this.azimuth += 0.0016;   // 菜单展示用慢速环绕
     const sinP = Math.sin(this.polar);
     this.camera.position.set(
       this.target.x + this.dist * sinP * Math.sin(this.azimuth),

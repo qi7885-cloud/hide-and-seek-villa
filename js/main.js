@@ -10,6 +10,7 @@ import { GodCamera, createAvatar, SpectatorPiP } from './spectator.js';
 import { Game } from './game.js';
 import { canHide } from './slots.js';
 import { itemById } from './items.js';
+import { SFX } from './audio.js';
 
 const container = document.getElementById('app');
 const ctx = createScene(container);
@@ -62,6 +63,24 @@ function showToast(msg) {
 }
 game.onToast = showToast;
 placement.onToast = showToast;
+
+// ---- 音效接线 ----
+const _toggle = interact.togglePiece.bind(interact);
+interact.togglePiece = (id, open) => {
+  const entries = interact.openEntries.filter(e => e.pieceId === id);
+  const anyClosed = entries.some(e => e.target === 0);
+  const ret = _toggle(id, open);
+  if (entries.length) (open === null ? anyClosed : open) ? SFX.open() : SFX.close();
+  return ret;
+};
+const _place = interact.placeItem.bind(interact);
+interact.placeItem = (...a) => { const r = _place(...a); if (r.ok) SFX.place(); return r; };
+const _pickup = interact.onPickup;
+interact.onPickup = (u, m) => { SFX.pickup(); if (_pickup) _pickup(u, m); };
+
+// ---- 菜单背后的环绕展示 ----
+godCam.enabled = true;
+godCam.autoRotate = true;
 
 // ---- 菜单与流程按钮 ----
 document.getElementById('btn-start').onclick = () => {

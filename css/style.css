@@ -95,7 +95,7 @@ body { font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; col
 .screen {
   position: absolute; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, #16233a 0%, #0b0e14 75%);
+  background: radial-gradient(ellipse at center, rgba(22,35,58,.78) 0%, rgba(11,14,20,.9) 75%);
 }
 .screen-card {
   text-align: center; padding: 44px 56px; max-width: 560px;

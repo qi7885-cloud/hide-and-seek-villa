@@ -155,5 +155,12 @@ export function buildVilla(scene, colliders) {
   addBox(scene, colliders, -7.9, 0.06, -2.5, 1.6, 0.12, 1.6,
     new THREE.MeshLambertMaterial({ color: 0xb0aca4 }), { collide: false });
 
+  // 各房间暖色顶灯（无阴影，低成本补光）
+  for (const r of ROOMS) {
+    const l = new THREE.PointLight(0xffe3b8, 0.32, 9);
+    l.position.set((r.minX + r.maxX) / 2, 2.55, (r.minZ + r.maxZ) / 2);
+    scene.add(l);
+  }
+
   return { rooms: ROOMS, spawn: SPAWN, wallHeight: WALL_H };
 }

@@ -1,6 +1,7 @@
 // game.js — 回合状态机：MENU → HIDE(藏家) → COVER(传递) → SEEK(找家) → RESULT
 import * as THREE from 'three';
 import { itemById } from './items.js';
+import { SFX } from './audio.js';
 
 export const Phase = { MENU: 'menu', HIDE: 'hide', COVER: 'cover', SEEK: 'seek', RESULT: 'result' };
 
@@ -39,7 +40,9 @@ export class Game {
     this.player.frozen = true;
     this.player.setLock(false);
     this.godCam.enabled = true;
+    this.godCam.autoRotate = false;
     this.placement.show();
+    this._crosshair(false);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 藏家布置中`);
     this.toast(`第 ${this.round}/${this.settings.rounds} 回合 —— 你是藏家，藏一件东西吧`);
   }
@@ -67,6 +70,7 @@ export class Game {
     this.player.teleport(this.villa.spawn.seeker.pos, this.villa.spawn.seeker.yaw);
     this.interact.enabled = true;
     this.pip.enabled = true;           // 藏家第三人称观战画中画
+    this._crosshair(true);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 限时搜索`);
     this.toast('你是找家！限时找出被藏起来的东西');
   }
@@ -87,8 +91,9 @@ export class Game {
     this.pip.enabled = false;
     document.getElementById('timer').classList.add('hidden');
     document.getElementById('hint-chip').classList.add('hidden');
-    if (found) this.score.seeker++;
-    else this.score.hider++;
+    this._crosshair(false);
+    if (found) { this.score.seeker++; SFX.found(); }
+    else { this.score.hider++; SFX.lost(); }
     this._setPhase(Phase.RESULT);
     const title = document.getElementById('result-title');
     const detail = document.getElementById('result-detail');
@@ -136,6 +141,10 @@ export class Game {
     tEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     tEl.classList.toggle('urgent', this.timer < 20);
 
+    // 最后10秒滴答
+    const secLeft = Math.ceil(this.timer);
+    if (this.timer <= 10 && secLeft !== this._lastTick) { this._lastTick = secLeft; SFX.tick(); }
+
     // 冷热提示：每2.5秒按与目标物的距离刷新
     this.hintCooldown -= dt;
     const chip = document.getElementById('hint-chip');
@@ -164,6 +173,10 @@ export class Game {
     const el = document.getElementById('role-banner');
     el.textContent = text;
     el.classList.remove('hidden');
+  }
+
+  _crosshair(show) {
+    document.getElementById('crosshair').classList.toggle('hidden', !show);
   }
 
   _setPhase(p) { this.phase = p; }
