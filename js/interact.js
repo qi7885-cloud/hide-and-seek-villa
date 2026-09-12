@@ -204,8 +204,15 @@ export class Interaction {
 
   _raycastPrompt() {
     if (!this.enabled) return;
-    const hit = this._currentHit();
     let text = null;
+    if (!document.pointerLockElement) {
+      text = '点击画面锁定鼠标才能操作';
+      this.promptEl.innerHTML = text;
+      this.promptEl.classList.remove('hidden');
+      this._lastHit = null;
+      return;
+    }
+    const hit = this._currentHit();
     if (hit && hit.dist < 2.5) {
       if (hit.type === 'item') {
         text = `按 <b>E</b> 拿起「${itemById(hit.mesh.userData.itemId)?.name ?? '?'}」`;

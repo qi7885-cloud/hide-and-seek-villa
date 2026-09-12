@@ -53,12 +53,14 @@ export function createScene(container) {
   // 渲染循环
   const clock = new THREE.Clock();
   const tickHandlers = [];
+  const hooks = { pipRender: null };   // main 层注入的渲染后钩子（画中画）
   function loop() {
     requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05); // 钳制帧间隔，防切标签页后物理爆炸
     for (const fn of tickHandlers) fn(dt);
     renderer.render(scene, camera);
+    if (hooks.pipRender) hooks.pipRender(renderer, scene);
   }
 
-  return { renderer, scene, camera, sun, clock, tickHandlers, start: loop };
+  return { renderer, scene, camera, sun, clock, tickHandlers, hooks, start: loop };
 }

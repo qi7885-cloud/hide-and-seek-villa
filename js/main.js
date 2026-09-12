@@ -1,4 +1,4 @@
-// main.js — 程序入口：组装场景、别墅、家具、玩家、交互（M4）
+// main.js — 程序入口：组装场景、别墅、家具、玩家、交互、回合系统（M5）
 import * as THREE from 'three';
 import { createScene } from './scene.js';
 import { buildVilla } from './villa.js';
@@ -6,6 +6,8 @@ import { buildFurniture } from './furniture.js';
 import { FPPlayer } from './player.js';
 import { Interaction } from './interact.js';
 import { PlacementUI } from './placement.js';
+import { GodCamera, createAvatar, SpectatorPiP } from './spectator.js';
+import { Game } from './game.js';
 import { canHide } from './slots.js';
 import { itemById } from './items.js';
 
@@ -26,36 +28,59 @@ const player = new FPPlayer(camera, ctx.renderer.domElement);
 player.teleport(villa.spawn.seeker.pos, villa.spawn.seeker.yaw);
 tickHandlers.push((dt) => player.update(dt, colliders));
 
-// ---- 交互系统（拾取回调 M5 接入游戏逻辑）----
+// ---- 交互系统 ----
 const interact = new Interaction(ctx, pieces, null, player);
 
-// ---- 藏家放置 UI（M5 回合流程驱动 show/hide）----
+// ---- 藏家放置 UI ----
 const placement = new PlacementUI(interact, pieces, camera);
 placement.initPick(THREE, ctx.renderer.domElement);
 
-// 指针锁定提示
-const lockHint = document.getElementById('interact-prompt');
-ctx.renderer.domElement.addEventListener('pointerlockstate', (e) => {
-  if (e.detail) {
-    lockHint.classList.add('hidden');
-  } else {
-    lockHint.textContent = '点击画面锁定鼠标进行漫游';
-    lockHint.classList.remove('hidden');
-  }
+// ---- 上帝视角 / 角色替身 / 画中画观战 ----
+const godCam = new GodCamera(camera, ctx.renderer.domElement);
+tickHandlers.push(() => godCam.update());
+const avatar = createAvatar();
+scene.add(avatar);
+tickHandlers.push(() => {
+  avatar.position.set(player.pos.x, player.pos.y, player.pos.z);
+  avatar.rotation.y = player.yaw + Math.PI;
 });
-lockHint.textContent = '点击画面锁定鼠标进行漫游';
-lockHint.classList.remove('hidden');
+const pip = new SpectatorPiP();
+tickHandlers.push((dt) => pip.update(player.pos, player.yaw, dt));
+ctx.hooks.pipRender = (r, s) => pip.render(r, s, window.innerWidth, window.innerHeight);
+
+// ---- 回合系统 ----
+const game = new Game(ctx, villa, pieces, interact, placement, player, godCam, avatar, pip);
+
+// ---- 通用 toast ----
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.add('hidden'), 2800);
+}
+game.onToast = showToast;
+placement.onToast = showToast;
+
+// ---- 菜单与流程按钮 ----
+document.getElementById('btn-start').onclick = () => {
+  game.settings.rounds = +document.getElementById('opt-rounds').value;
+  game.settings.seekTime = +document.getElementById('opt-time').value;
+  game.settings.hints = document.getElementById('opt-hints').value === 'on';
+  document.getElementById('screen-menu').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  game.startRound();
+};
+document.getElementById('btn-cover-continue').onclick = () => game.beginSeek();
+document.getElementById('btn-next-round').onclick = () => game.nextRound();
+
+// 计时 tick 挂进主循环
+tickHandlers.push((dt) => game.tick(dt));
 
 // 调试接口（浏览器控制台可用 __game.pos 查看位置）
-window.__game = { ctx, player, colliders, villa, pieces, interact, placement, canHide, itemById };
-
-// 上帝视角调试：俯瞰全屋（藏家放置阶段 M5 会正式实现）
-window.__game.godView = function (height = 13) {
-  player.frozen = true;
-  camera.position.set(0, height, 7.5);
-  camera.lookAt(0, 0, 0);
-};
+window.__game = { ctx, player, colliders, villa, pieces, interact, placement, game, godCam, pip, canHide, itemById };
 
 ctx.start();
 document.getElementById('loading').classList.add('hidden');
-console.log('[HideSeek] villa ready, three.js r' + THREE.REVISION);
+console.log('[HideSeek] game ready, three.js r' + THREE.REVISION);
