@@ -14,6 +14,7 @@ export class FPPlayer {
     this.walkSpeed = 3.1;
     this.runSpeed = 5.2;
     this.enabled = false;
+    this.frozen = false;   // 冻结时不接管相机（上帝视角用）
     this.keys = {};
 
     this._onMouseMove = (e) => {
@@ -51,6 +52,7 @@ export class FPPlayer {
   setLock(allowed) { this.canLock = allowed; if (!allowed && document.pointerLockElement) document.exitPointerLock(); }
 
   update(dt, colliders) {
+    if (this.frozen) return;
     if (!this.enabled) { this._applyCamera(); return; }
     const k = this.keys;
     let fx = 0, fz = 0;
@@ -76,6 +78,11 @@ export class FPPlayer {
     this.vy -= 18 * dt;
     this.pos.y += this.vy * dt;
     if (this.pos.y <= 0) { this.pos.y = 0; this.vy = 0; }
+
+    // 下蹲（Ctrl/C）：压低视线，方便看沙发底、床底
+    const crouching = k['ControlLeft'] || k['KeyC'];
+    const targetEye = crouching ? 0.55 : 1.62;
+    this.eyeHeight += (targetEye - this.eyeHeight) * Math.min(1, dt * 10);
 
     // 圆柱 vs AABB 碰撞（两轮迭代处理拐角）
     for (let pass = 0; pass < 2; pass++) {
