@@ -61,7 +61,6 @@ export class FPPlayer {
     if (k['KeyA']) fx -= 1;
     if (k['KeyD']) fx += 1;
     const moving = fx !== 0 || fz !== 0;
-    const crouching = k['KeyC'];   // 下蹲：仅 C 键（Ctrl 不再触发）
     const speed = (k['ShiftLeft'] || k['ShiftRight']) ? this.runSpeed : this.walkSpeed;
 
     if (moving) {
@@ -113,10 +112,6 @@ export class FPPlayer {
       this.pos.y = support;
       this.vy = 0;
     }
-
-    // 下蹲（C）
-    const targetEye = crouching ? 0.55 : 1.62;
-    this.eyeHeight += (targetEye - this.eyeHeight) * Math.min(1, dt * 10);
 
     // 跟拍感：行走视点起伏 + 相机高度平滑
     if (moving && this.vy === 0) this._bob = (this._bob || 0) + dt * (speed * 2.1);
