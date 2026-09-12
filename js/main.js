@@ -1,29 +1,38 @@
-// main.js — 程序入口，组装各模块（M1：先跑起来）
+// main.js — 程序入口：组装场景、别墅、玩家（M2）
 import * as THREE from 'three';
 import { createScene } from './scene.js';
+import { buildVilla } from './villa.js';
+import { FPPlayer } from './player.js';
 
 const container = document.getElementById('app');
 const ctx = createScene(container);
-const { scene, camera } = ctx;
+const { scene, camera, tickHandlers } = ctx;
 
-// —— 临时演示物体：确认渲染/阴影/循环都正常（M2 起替换为别墅）——
-const demoBox = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 1, 1),
-  new THREE.MeshLambertMaterial({ color: 0xd9773f })
-);
-demoBox.position.set(0, 0.5, 0);
-demoBox.castShadow = true;
-scene.add(demoBox);
+// ---- 别墅 ----
+const colliders = [];
+const villa = buildVilla(scene, colliders);
 
-// 临时相机漂移：让画面动起来，验证渲染循环
-ctx.tickHandlers.push((dt) => {
-  const t = ctx.clock.elapsedTime;
-  camera.position.set(Math.sin(t * 0.2) * 8, 3.5, Math.cos(t * 0.2) * 8);
-  camera.lookAt(0, 0.6, 0);
-  demoBox.rotation.y += dt * 0.5;
+// ---- 玩家（找家第一人称）----
+const player = new FPPlayer(camera, ctx.renderer.domElement);
+player.teleport(villa.spawn.seeker.pos, villa.spawn.seeker.yaw);
+tickHandlers.push((dt) => player.update(dt, colliders));
+
+// 指针锁定提示
+const lockHint = document.getElementById('interact-prompt');
+ctx.renderer.domElement.addEventListener('pointerlockstate', (e) => {
+  if (e.detail) {
+    lockHint.classList.add('hidden');
+  } else {
+    lockHint.textContent = '点击画面锁定鼠标进行漫游';
+    lockHint.classList.remove('hidden');
+  }
 });
+lockHint.textContent = '点击画面锁定鼠标进行漫游';
+lockHint.classList.remove('hidden');
 
-// 启动
+// 调试接口（浏览器控制台可用 __game.pos 查看位置）
+window.__game = { ctx, player, colliders, villa };
+
 ctx.start();
 document.getElementById('loading').classList.add('hidden');
-console.log('[HideSeek] scene booted, three.js r' + THREE.REVISION);
+console.log('[HideSeek] villa ready, three.js r' + THREE.REVISION);
