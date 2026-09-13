@@ -7,11 +7,11 @@ import { createItemMesh, itemById } from './items.js';
 // kind: hinge=铰链门 slide=抽屉 book=书本抽出翻开 prop=直接动某节点 lift=掀地毯
 const OPENABLE_DEFS = {
   tvCabinet: [
-    { key: 'cabL', part: 'doorL', kind: 'hinge', hinge: [-0.76, 0.28, 0.215], axis: 'y', open: 1.9 },
-    { key: 'cabR', part: 'doorR', kind: 'hinge', hinge: [0.76, 0.28, 0.215], axis: 'y', open: -1.9 },
+    { key: 'cabL', part: 'doorL', kind: 'hinge', hinge: [-0.76, 0.28, 0.215], axis: 'y', open: -1.9 },
+    { key: 'cabR', part: 'doorR', kind: 'hinge', hinge: [0.76, 0.28, 0.215], axis: 'y', open: 1.9 },
   ],
   fridge: [
-    { key: 'door', slots: ['inner', 'freezer'], part: 'door', kind: 'hinge', hinge: [-0.375, 0.89, 0.35], axis: 'y', open: 1.9 },
+    { key: 'door', slots: ['inner', 'freezer'], part: 'door', kind: 'hinge', hinge: [-0.375, 0.89, 0.35], axis: 'y', open: -1.9 },
   ],
   counter: [
     { key: 'drawer1', part: 'drawer1', kind: 'slide', axis: 'z', open: 0.4 },
@@ -19,30 +19,47 @@ const OPENABLE_DEFS = {
     { key: 'cab', part: 'cabDoor', kind: 'hinge', hinge: [-0.96, 0.25, 0.315], axis: 'y', open: -1.8 },
   ],
   wardrobe: [
-    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.575, 1.0, 0.315], axis: 'y', open: 1.8 },
-    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.575, 1.0, 0.315], axis: 'y', open: -1.8 },
+    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.575, 1.0, 0.315], axis: 'y', open: -1.8 },
+    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.575, 1.0, 0.315], axis: 'y', open: 1.8 },
+  ],
+  wardrobe2: [
+    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.575, 1.0, 0.315], axis: 'y', open: -1.8 },
+    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.575, 1.0, 0.315], axis: 'y', open: 1.8 },
   ],
   nightstand: [
+    { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
+  ],
+  nightstand2: [
     { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
   ],
   dresser: [
     { key: 'drawer1', part: 'drawer1', kind: 'slide', axis: 'z', open: 0.34 },
     { key: 'drawer2', part: 'drawer2', kind: 'slide', axis: 'z', open: 0.34 },
   ],
+  dresser2: [
+    { key: 'drawer1', part: 'drawer1', kind: 'slide', axis: 'z', open: 0.34 },
+    { key: 'drawer2', part: 'drawer2', kind: 'slide', axis: 'z', open: 0.34 },
+  ],
   desk: [
+    { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.4 },
+  ],
+  desk2: [
     { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.4 },
   ],
   computerCase: [
     { key: 'inner', part: 'sidePanel', kind: 'hinge', hinge: [0.1, 0.23, -0.225], axis: 'y', open: 2.1 },
   ],
+  chest: [
+    { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.36, -0.22], axis: 'x', open: -1.9 },
+  ],
   toyChest: [
-    { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.385, -0.21], axis: 'x', open: -1.9 },
+    { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.36, -0.22], axis: 'x', open: -1.9 },
   ],
   mailbox: [
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.12, 1.12, 0.2], axis: 'y', open: -1.9 },
   ],
   shoeCabinet: [
-    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.43, 0.55, 0.175], axis: 'y', open: 1.9 },
+    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.43, 0.55, 0.175], axis: 'y', open: -1.9 },
   ],
   wallCabinet: [
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.47, 0.35, 0.165], axis: 'y', open: 1.9 },
@@ -60,6 +77,10 @@ const OPENABLE_DEFS = {
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.5, hinge: [0, 0, 0.5] },
   ],
   bookshelf: [
+    { key: 'pages1', part: 'books:3', kind: 'book' },
+    { key: 'pages2', part: 'books:14', kind: 'book' },
+  ],
+  bookshelf2: [
     { key: 'pages1', part: 'books:3', kind: 'book' },
     { key: 'pages2', part: 'books:14', kind: 'book' },
   ],

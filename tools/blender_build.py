@@ -564,13 +564,13 @@ def b_counter():
     reg(B(0.72, 0.5, 0.56, 0.25, 0.25, 0, M('wood_dark'), 'openbox', 0.006))
 
 def b_fridge():
-    # 空心箱体 + 冷冻/冷藏隔板 + 内置玻璃层架（开门可见内部）
+    # 空心箱体 + 冷冻/冷藏隔板 + 内置玻璃层架（门从把手侧向外开，把手装在自由缘）
     HOLLOW(0.75, 1.78, 0.7, 0, 0.89, 0, M('fridge'), 'fr_body', t=0.04)
     reg(B(0.66, 0.03, 0.6, 0, 0.375, 0, M('steel_dark'), 'fr_divider', 0.006))
     reg(B(0.71, 0.02, 0.62, 0, 0.9, 0.02, M('steel_dark'), 'fr_shelf', 0.004))
     reg(join([B(0.73, 1.74, 0.05, 0, 0.89, 0.35, M('fridge_door'), 'd', 0.01),
-              B(0.04, 0.5, 0.04, -0.28, 1.1, 0.39, M('steel'), 'h1', 0.008),
-              B(0.02, 0.3, 0.02, -0.28, 0.55, 0.39, M('steel'), 'h2', 0.006),
+              B(0.04, 0.5, 0.04, 0.28, 1.1, 0.39, M('steel'), 'h1', 0.008),
+              B(0.02, 0.3, 0.02, 0.28, 0.55, 0.39, M('steel'), 'h2', 0.006),
               B(0.73, 0.012, 0.052, 0, 1.15, 0.351, M('steel_dark'), 'seam', 0.003)], 'part_door'))
 
 def b_dining_table():
@@ -807,7 +807,7 @@ def b_wall_cabinet():
     HOLLOW(1.0, 0.7, 0.33, 0, 0.35, 0, M('white'), 'cab_body', t=0.02)
     reg(B(0.92, 0.02, 0.3, 0, 0.33, 0, M('wood_light'), 'cab_shelf', 0.004))
     reg(join([B(0.94, 0.64, 0.028, 0, 0.35, 0.165, M('wood_light'), 'd', 0.006),
-              B(0.1, 0.025, 0.025, 0.08, 0.35, 0.19, M('dark'), 'h', 0.004)], 'part_door'))
+              B(0.1, 0.025, 0.025, 0.38, 0.35, 0.19, M('dark'), 'h', 0.004)], 'part_door'))
     # 下层调料（靠背板，前区留给藏匿物品）
     reg(CYL(0.032, 0.2, -0.3, 0.12, -0.12, M('dark'), 'soy', 14))
     reg(CYL(0.015, 0.02, -0.3, 0.23, -0.12, M('dark'), 'soy_cap', 10))
@@ -1213,12 +1213,17 @@ def build_upper_v():
     for i in range(STEPS):
         reg(B(TREAD + 0.02, (i + 1) * RISE, 0.9, 1.2 + i * TREAD + TREAD / 2, (i + 1) * RISE / 2, -5.02,
               M('floor2_wood'), f'stair{i}', 0.006))
-    # 侧栏柱
+    # 侧栏立柱（高度逐根计算，柱顶嵌入斜扶手截面，保证接触）
+    x0c, y0c, x1c, y1c = 1.345, 1.145, 5.695, 3.745
+    slope = (y1c - y0c) / (x1c - x0c)
     for i in range(0, STEPS, 3):
-        reg(B(0.05, 0.9, 0.05, 1.2 + i * TREAD + TREAD / 2, (i + 1) * RISE + 0.45, -4.53,
-              M('wood_dark'), f'rail{i}', 0.005))
-    hr = B(math.hypot(5.22, 3.15), 0.07, 0.07, 3.85, 2.72, -4.53, M('wood_dark'), 'handrail', 0.006)
-    hr.rotation_euler = (0, -math.atan2(3.15, 5.22), 0)   # three rotation.z -> blender rotY 取负
+        xi = 1.2 + i * TREAD + TREAD / 2
+        yi = y0c + (xi - x0c) * slope
+        step_y = (i + 1) * RISE
+        reg(B(0.05, yi - step_y, 0.05, xi, (step_y + yi) / 2, -4.53, M('wood_dark'), f'rail{i}', 0.005))
+    hr = B(math.hypot(x1c - x0c, y1c - y0c), 0.07, 0.07, (x0c + x1c) / 2, (y0c + y1c) / 2, -4.53,
+           M('wood_dark'), 'handrail', 0.006)
+    hr.rotation_euler = (0, -math.atan2(y1c - y0c, x1c - x0c), 0)
     _apply(hr); reg(hr)
     # 楼梯井南侧实体墙（x 0.1..6.45，从二楼楼板到顶）——上楼梯到顶正对墙面，
     # 同时挡住从储物间跌落楼梯井；东段 6.45..7.5 留空作为落地进入储物间的出口
