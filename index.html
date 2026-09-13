@@ -55,11 +55,8 @@
           </select>
         </label>
         <label>藏匿件数
-          <select id="opt-hidecount">
-            <option value="1" selected>1 件</option>
-            <option value="2">2 件</option>
-            <option value="3">3 件</option>
-          </select>
+          <input type="number" id="opt-hidecount" min="1" max="8" step="1" value="1"
+                 title="自定义本回合要藏的物品件数（1-8）">
         </label>
         <label>搜索时间
           <select id="opt-time">
@@ -78,9 +75,9 @@
       </div>
       <button id="btn-start" class="btn-primary">开始游戏</button>
       <p class="help-text">
-        【藏家】第一视角布置：数字键 1-8 选物品 → 瞄准家具按 E → 数字键放入槽位 → 按 G 完成<br>
-        【找家】WASD 移动 / 鼠标视角 / Shift 跑 / E 开门·掀地毯·拿取 · 走楼梯上二楼<br>
-        庭院（长椅/信箱/花坛）和全屋 40+ 藏点都可藏 · Esc 解锁鼠标可点"退出本局"
+        【藏家】选中您要藏的家具按 <b>E</b> 选择位置，再按物品序号进行藏匿，按 <b>G</b> 完成<br>
+        【找家】WASD 移动 / 按住左键拖动视角 / Shift 跑 / E 开门·掀地毯·拿取 · 走楼梯上二楼<br>
+        庭院（长椅/信箱/花坛）和全屋 40+ 藏点都可藏 · 右上角「退出本局」随时可点
       </p>
     </div>
   </div>

@@ -185,8 +185,8 @@ export function addRealism(scene) {
   bubbles.position.set(3.4, WALL_H - 0.55, -2.3);
   scene.add(bubbles);
 
-  // 厨房挡水板
-  box(scene, 0.03, 0.6, 2.4, 0xded8ca, 7.5 - INSET - 0.015, 1.2, -3.7);
+  // 厨房挡水板（止于窗缘，不遮挡东窗）
+  box(scene, 0.03, 0.6, 1.4, 0xded8ca, 7.5 - INSET - 0.015, 1.2, -4.2);
 }
 
 function cyl(g, r, h, color, x, y, z) {

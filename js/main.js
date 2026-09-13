@@ -55,7 +55,8 @@ async function init() {
 
   // ---- 藏家放置 UI ----
   const placement = new PlacementUI(interact, pieces, camera);
-  interact.onHideInteract = (piece) => placement.openSlotPanelFor(piece);
+  interact.onHideInteract = (piece) => placement.onAimE(piece);
+  tickHandlers.push(() => placement.update());
 
   // ---- 上帝视角 / 角色替身 / 画中画观战 ----
   const godCam = new GodCamera(camera, ctx.renderer.domElement);
@@ -77,7 +78,7 @@ async function init() {
   const toastEl = document.getElementById('toast');
   let toastTimer = null;
   function showToast(msg) {
-    toastEl.textContent = msg;
+    toastEl.innerHTML = msg;
     toastEl.classList.remove('hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.add('hidden'), 2800);
@@ -107,7 +108,7 @@ async function init() {
   document.getElementById('btn-start').onclick = () => {
     game.settings.rounds = +document.getElementById('opt-rounds').value;
     game.settings.seekTime = +document.getElementById('opt-time').value;
-    game.settings.hideCount = +document.getElementById('opt-hidecount').value;
+    game.settings.hideCount = Math.max(1, Math.min(8, +document.getElementById('opt-hidecount').value || 1));
     game.settings.hints = document.getElementById('opt-hints').value === 'on';
     document.getElementById('screen-menu').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');

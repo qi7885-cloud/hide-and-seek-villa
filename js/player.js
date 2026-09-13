@@ -1,4 +1,4 @@
-// player.js — 第一人称控制器：WASD + 鼠标视角 + 圆柱碰撞（对静态AABB滑行）
+// player.js — 第一人称控制器：WASD + 按住左键拖动视角（无指针锁定，鼠标可点UI）+ 圆柱碰撞
 import * as THREE from 'three';
 
 export class FPPlayer {
@@ -13,33 +13,33 @@ export class FPPlayer {
     this.eyeHeight = 1.62;
     this.walkSpeed = 3.1;
     this.runSpeed = 5.2;
-    this.enabled = false;
+    this.enabled = false;  // 视角控制开关（游戏阶段开启，菜单关闭）
     this.frozen = false;   // 冻结时不接管相机（上帝视角用）
     this.keys = {};
+    this._dragging = false;
 
     this._onMouseMove = (e) => {
-      if (!this.enabled || document.pointerLockElement !== this.dom) return;
+      if (!this.enabled || !this._dragging) return;
       this.yaw -= e.movementX * 0.0022;
       this.pitch -= e.movementY * 0.0022;
       const lim = Math.PI / 2 - 0.05;
       this.pitch = Math.max(-lim, Math.min(lim, this.pitch));
     };
+    // 按住左键拖动 = 转视角；点在HUD按钮上时不拖动（按钮自身拦截事件）
+    this._onMouseDown = (e) => {
+      if (!this.enabled || e.button !== 0) return;
+      if (e.target !== this.dom) return;   // 点在按钮/面板上不转视角
+      this._dragging = true;
+    };
+    this._onMouseUp = () => { this._dragging = false; };
     this._onKeyDown = (e) => { this.keys[e.code] = true; };
     this._onKeyUp = (e) => { this.keys[e.code] = false; };
-    this._onLockChange = () => {
-      this.enabled = document.pointerLockElement === this.dom;
-      this.dom.dispatchEvent(new CustomEvent('pointerlockstate', { detail: this.enabled }));
-    };
 
     document.addEventListener('mousemove', this._onMouseMove);
+    document.addEventListener('mousedown', this._onMouseDown);
+    document.addEventListener('mouseup', this._onMouseUp);
     document.addEventListener('keydown', this._onKeyDown);
     document.addEventListener('keyup', this._onKeyUp);
-    document.addEventListener('pointerlockchange', this._onLockChange);
-    dom.addEventListener('click', () => {
-      if (this.enabled || !this.canLock) return;
-      this.dom.requestPointerLock();
-    });
-    this.canLock = true;
   }
 
   teleport(pos, yaw = 0) {
@@ -49,7 +49,11 @@ export class FPPlayer {
     this.vy = 0;
   }
 
-  setLock(allowed) { this.canLock = allowed; if (!allowed && document.pointerLockElement) document.exitPointerLock(); }
+  // 兼容旧调用：true=开启视角控制，false=关闭（并停止拖动）
+  setLock(allowed) {
+    this.enabled = allowed;
+    if (!allowed) this._dragging = false;
+  }
 
   update(dt, colliders) {
     if (this.frozen) return;
@@ -137,8 +141,9 @@ export class FPPlayer {
 
   dispose() {
     document.removeEventListener('mousemove', this._onMouseMove);
+    document.removeEventListener('mousedown', this._onMouseDown);
+    document.removeEventListener('mouseup', this._onMouseUp);
     document.removeEventListener('keydown', this._onKeyDown);
     document.removeEventListener('keyup', this._onKeyUp);
-    document.removeEventListener('pointerlockchange', this._onLockChange);
   }
 }

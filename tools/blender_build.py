@@ -429,7 +429,8 @@ def DISPLACED_SPH(r, x, y, z, mat, name, amp=0.16, seed=0):
 def join(objs, name):
     """合并为一个对象（保留世界位置与各自材质）。
     部件名追加桶名后缀保证全场景唯一（Blender 名称全局去重会静默加 .001，
-    而 glTF 导出器会去掉点号破坏 part_* 命名）；游戏端按 __ 截断还原。"""
+    而 glTF 导出器会去掉点号破坏 part_* 命名）；已带后缀则先剥离再重加，避免叠加。
+    游戏端按 __ 截断还原。"""
     _unselect()
     for o in objs:
         o.select_set(True)
@@ -437,7 +438,8 @@ def join(objs, name):
     if len(objs) > 1:
         bpy.ops.object.join()
     o = bpy.context.active_object
-    o.name = f'{name}__{CUR}' if CUR else name
+    base = name.split('__')[0]
+    o.name = f'{base}__{CUR}' if CUR else base
     return o
 
 def mesh_tri(name, verts3, faces, mat, double=True):
@@ -469,12 +471,14 @@ def b_sofa():
     reg(B(0.22, 0.32, 0.8, -0.84, 0.58, 0.02, M('velvet_d'), 'armL', bevel=0.05))
     reg(B(0.22, 0.32, 0.8, 0.84, 0.58, 0.02, M('velvet_d'), 'armR', bevel=0.05))
     for i in range(3):
-        reg(B(0.55, 0.14, 0.7, -0.6 + i * 0.6, 0.51, 0.05, M('cream'), f'cush{i}', bevel=0.045))
+        # 坐垫底部抬离底座面 0.004，避免与底座顶面共面闪烁
+        reg(B(0.55, 0.14, 0.7, -0.6 + i * 0.6, 0.514, 0.05, M('cream'), f'cush{i}', bevel=0.045))
     p1 = B(0.4, 0.36, 0.13, -0.5, 0.72, -0.24, M('pillow'), 'throwL', bevel=0.03)
-    p1.rotation_euler = (0.15, 0, 0); _apply(p1); reg(p1)
+    p1.rotation_euler = (-0.15, 0, 0); _apply(p1); reg(p1)
     p2 = B(0.4, 0.36, 0.13, 0.28, 0.72, -0.24, M('cream_d'), 'throwR', bevel=0.03)
-    p2.rotation_euler = (0.15, 0, 0); _apply(p2); reg(p2)
-    t1 = B(0.5, 0.04, 0.62, 0.62, 0.76, 0.1, M('white'), 'blanketA', bevel=0.015)
+    p2.rotation_euler = (-0.15, 0, 0); _apply(p2); reg(p2)
+    # 盖毯底部抬离扶手顶面，避免共面闪烁
+    t1 = B(0.5, 0.04, 0.62, 0.62, 0.766, 0.1, M('white'), 'blanketA', bevel=0.015)
     t1.rotation_euler = (0, -0.06, 0); _apply(t1); reg(t1)
     reg(B(0.5, 0.3, 0.04, 0.62, 0.58, 0.4, M('white'), 'blanketB', bevel=0.015))
 
@@ -666,7 +670,7 @@ def b_bookshelf():
     shelfY = [0.08, 0.52, 0.96, 1.4]
     for i, y in enumerate(shelfY):
         reg(B(0.92, 0.035, 0.3, 0, y, 0, M('wood'), f'shelf{i}', 0.005))
-    # 两排书（与程序化一致：书脊颜色/宽高循环）
+    # 两排书（与程序化一致：书脊颜色/宽高循环）+ 书脊书名 Vol.N
     bi = 0
     for row in (1, 2):
         yBase = shelfY[row] + 0.018
@@ -674,7 +678,20 @@ def b_bookshelf():
         while x < 0.38:
             w = 0.032 + (bi % 3) * 0.012
             h = 0.24 + ((bi * 7) % 5) * 0.014
-            reg(B(w, h, 0.22, x + w / 2, yBase + h / 2, 0, M(f'book{bi % 7}'), f'part_book_{bi:02d}', 0.003))
+            cx3, cy3 = x + w / 2, yBase + h / 2
+            book = B(w, h, 0.22, cx3, cy3, 0, M(f'book{bi % 7}'), f'part_book_{bi:02d}', 0.003)
+            # 书脊文字：面朝书前(-Y_bl)，自下而上读，略凸出书面
+            bpy.ops.object.text_add(location=(cx3, -0.1115, cy3))
+            txt = bpy.context.active_object
+            txt.data.body = f'Vol.{bi + 1}'
+            txt.data.size = 0.013
+            txt.data.extrude = 0.0012
+            txt.data.align_x = 'CENTER'
+            txt.data.align_y = 'CENTER'
+            txt.rotation_euler = (0, -math.pi / 2, math.pi / 2)
+            bpy.ops.object.convert(target='MESH')   # 文本不能 apply 旋转，先转网格再合并
+            txt.data.materials.append(M('paper'))
+            reg(join([book, txt], f'part_book_{bi:02d}__bookshelf'))
             x += w + 0.006
             bi += 1
 
@@ -962,8 +979,9 @@ def build_villa_v():
             f = PLANE(w, d, cx, 0.012, cz, M('floor_wood'), f"floor_{r['id']}", uv_scale=(w / 2.2, d / 2.2))
         reg(f)
     # 天花板（法线朝下；楼梯井上方开洞与二楼楼板楼梯口对齐，
-    # 否则从楼下仰望楼梯像被吊顶/二楼地面封死）
-    hx0, hx1, hz0, hz1 = 4.6, 6.5, -5.5, -4.55   # 楼梯井洞口（与二楼楼板楼梯口对齐）
+    # 否则从楼下仰望楼梯像被吊顶/二楼地面封死）。
+    # 洞口覆盖楼梯全程头部空间：x≥2.9 处台阶上人眼已越过吊顶面
+    hx0, hx1, hz0, hz1 = 2.9, 6.5, -5.5, -4.55   # 楼梯井洞口（与二楼楼板楼梯口对齐）
     ceiling_parts = [
         (-7.7, 7.7, -5.7, hz0),        # 北窄条
         (-7.7, hx0, hz0, hz1),         # 洞西侧
@@ -1008,8 +1026,8 @@ def build_villa_v():
     # 吊灯
     chandelier_v('chand', -3.75, WALL_H - 0.62, -2.75)
     bubble_lamp_v('bub', 3.4, WALL_H - 0.55, -2.3)
-    # 厨房挡水板
-    reg(B(0.03, 0.6, 2.4, 7.5 - 0.05 - 0.015, 1.2, -3.7, M('trim'), 'backsplash', 0.004))
+    # 厨房挡水板（止于窗缘，不遮挡东窗）
+    reg(B(0.03, 0.6, 1.4, 7.5 - 0.05 - 0.015, 1.2, -4.2, M('trim'), 'backsplash', 0.004))
 
 ROOMS = [
     {'id': 'living', 'minX': -7.5, 'maxX': 0, 'minZ': -5.5, 'maxZ': 0},
@@ -1066,11 +1084,11 @@ def build_upper_v():
     hr = B(math.hypot(5.22, 3.15), 0.07, 0.07, 3.85, 2.72, -4.53, M('wood_dark'), 'handrail', 0.006)
     hr.rotation_euler = (0, -math.atan2(3.15, 5.22), 0)   # three rotation.z -> blender rotY 取负
     _apply(hr); reg(hr)
-    # 楼梯口护栏
-    reg(B(0.06, 0.9, 0.95, 1.07, F2 + 0.45, -5.02, M('wood_dark'), 'guard1', 0.006))
-    reg(B(0.06, 0.9, 0.95, 7.53, F2 + 0.45, -5.02, M('wood_dark'), 'guard2', 0.006))
-    reg(B(6.5, 0.06, 0.07, 4.25, F2 + 0.9, -4.53, M('wood_dark'), 'guard3', 0.006))
-    reg(B(6.5, 0.9, 0.06, 4.25, F2 + 0.45, -4.53, M('wood_dark'), 'guard4', 0.006))
+    # 楼梯口护栏（西段 x 1.0..6.4 挡楼梯井；东段 6.4..7.5 留空作为进入二楼的出口）
+    reg(B(5.4, 0.9, 0.06, 3.7, F2 + 0.45, -4.53, M('wood_dark'), 'guard1', 0.006))
+    reg(B(5.4, 0.06, 0.07, 3.7, F2 + 0.9, -4.53, M('wood_dark'), 'guard2', 0.006))
+    reg(B(0.06, 0.9, 0.95, 1.07, F2 + 0.45, -5.02, M('wood_dark'), 'guard_post1', 0.006))
+    reg(B(0.06, 0.9, 0.95, 6.44, F2 + 0.45, -5.02, M('wood_dark'), 'guard_post2', 0.006))
     # 坡屋顶
     ridgeY, eaveY = F2 + 2.9 + 2.15, F2 + 2.9
     EZ, EX = 6.35, 8.4

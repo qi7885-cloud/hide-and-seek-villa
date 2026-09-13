@@ -67,6 +67,8 @@ export class Interaction {
     this.openEntries = [];       // 所有开合动画条目
     this.openBySlotKey = {};     // pieceId:slotKey -> entry
     this.placedItems = [];       // 已藏物品网格
+    this.dropAnims = [];         // 放入动作动画 [{mesh, from, to, t}]
+    this.bookTweens = [];        // 书本抽出/放回动画 [{proxy, from, to, t, dur, tilt}]
     this.inspecting = null;      // 检查特写状态
     this.promptEl = document.getElementById('interact-prompt');
     this.enabled = false;        // 找家阶段才启用 E 交互
@@ -157,6 +159,23 @@ export class Interaction {
         this._apply(e);
       }
     }
+    // 放入动作：物品从槽位上方落入
+    for (let i = this.dropAnims.length - 1; i >= 0; i--) {
+      const a = this.dropAnims[i];
+      a.t = Math.min(1, a.t + dt / 0.45);
+      const k = a.t * a.t * (3 - 2 * a.t);
+      a.mesh.position.lerpVectors(a.from, a.to, k);
+      if (a.t >= 1) this.dropAnims.splice(i, 1);
+    }
+    // 书本抽出/放回动画
+    for (let i = this.bookTweens.length - 1; i >= 0; i--) {
+      const b = this.bookTweens[i];
+      b.t = Math.min(1, b.t + dt / b.dur);
+      const k = b.t * b.t * (3 - 2 * b.t);
+      b.proxy.position.z = b.from + (b.to - b.from) * k;
+      b.proxy.rotation.x = b.tilt * k;
+      if (b.t >= 1) this.bookTweens.splice(i, 1);
+    }
     if (this.inspecting) this._updateInspect(dt);
     else this._raycastPrompt();
   }
@@ -212,6 +231,45 @@ export class Interaction {
     return null;
   }
 
+  // 准星正对的书本（书架动态藏匿用）：返回 {index, proxy, name} 或 null
+  aimedBook() {
+    const cam = this.ctx.camera;
+    this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
+    const piece = this.pieces.find(p => p.def.id === 'bookshelf');
+    if (!piece || !piece.parts.books) return null;
+    const books = piece.parts.books.filter(Boolean);
+    const hits = this.raycaster.intersectObjects(books, true);
+    if (!hits.length) return null;
+    // 沿父链向上找到 part_book_NN 前缀名，再到 books 数组里按名匹配（跨包装层）
+    let o = hits[0].object;
+    let base = null;
+    while (o) {
+      if (o.name && o.name.startsWith('part_book_')) {
+        // 取最外层（最短的）part_book_NN 名字
+        if (!base || o.name.length < base.length) base = o.name;
+      }
+      o = o.parent;
+    }
+    if (!base) return null;
+    const key = base.split('__')[0];                      // 'part_book_25'
+    const idx = books.findIndex(b => b.name === key || b.name.split('__')[0] === key);
+    if (idx < 0) return null;
+    return { index: idx, proxy: books[idx], name: `Vol.${idx + 1}` };
+  }
+
+  // 书页间槽位的动态书本列表（供面板提示可藏书册）
+  bookList() {
+    const piece = this.pieces.find(p => p.def.id === 'bookshelf');
+    return piece?.parts.books?.filter(Boolean) ?? [];
+  }
+
+  // 书本抽出/放回动画：delta 相对书本原位（原位记录在 userData.baseZ）
+  animateBook(proxy, delta, dur = 0.35, tilt = -0.35) {
+    if (proxy.userData.baseZ === undefined) proxy.userData.baseZ = proxy.position.z;
+    this.bookTweens = this.bookTweens.filter(b => b.proxy !== proxy);
+    this.bookTweens.push({ proxy, from: proxy.position.z, to: proxy.userData.baseZ + delta, t: 0, dur, tilt });
+  }
+
   // 容器已打开时，其中的物品视为可直接拿取（抽屉/冰箱/柜门/掀开的地毯/抽出的书）
   _exposedPickable(piece) {
     return piece.slots.find(s => {
@@ -224,13 +282,6 @@ export class Interaction {
   _raycastPrompt() {
     if (!this.enabled && !this.hideMode) return;
     let text = null;
-    if (!document.pointerLockElement) {
-      text = '点击画面锁定鼠标才能操作';
-      this.promptEl.innerHTML = text;
-      this.promptEl.classList.remove('hidden');
-      this._lastHit = null;
-      return;
-    }
     const hit = this._currentHit();
     if (hit && hit.dist < 2.5) {
       if (hit.type === 'item' && !this.hideMode) {
@@ -337,7 +388,8 @@ export class Interaction {
 
   // ---------- 藏匿放置 ----------
   // 把物品放进槽位：校验+生成网格+定位朝向
-  placeItem(pieceId, slotKey, itemId) {
+  // extra.bookIndex: 书架书页间指定藏入第几本（动态瞄准）
+  placeItem(pieceId, slotKey, itemId, extra = {}) {
     const piece = this.pieces.find(p => p.def.id === pieceId);
     const slot = piece?.slots.find(s => s.key === slotKey);
     const item = itemById(itemId);
@@ -356,21 +408,51 @@ export class Interaction {
       s[mi] = 0.5;
       mesh.scale.set(...s);
     }
-    let y = slot.worldPos.y;
-    switch (slot.type) {
-      case 'top': case 'under': y += ih / 2; break;
-      case 'interior': case 'drawer': y += ih / 2 - slot.cap[1] / 2; break;
-      case 'soil': y += ih / 4; break;                                   // 半埋进土里
-      case 'pages': mesh.rotation.z = Math.PI / 2; break;                // 竖着夹进书页
-      case 'behind': mesh.rotation.x = Math.PI / 2; y += ih / 2; break;  // 立在相框后
+    let pos;
+    if (slot.type === 'pages' && extra.bookIndex != null) {
+      // 动态书本：物品竖着夹进被抽出那本书的原位（书本随后放回夹住它）
+      const book = piece.parts.books[extra.bookIndex];
+      if (!book) return { ok: false, why: '书本不存在' };
+      book.updateMatrixWorld(true);
+      const baseZ = book.userData.baseZ ?? book.position.z;
+      const rest = new THREE.Vector3(book.position.x, book.position.y, baseZ)
+        .applyMatrix4(book.parent.matrixWorld);
+      mesh.rotation.z = Math.PI / 2;
+      pos = rest;
+    } else {
+      let y = slot.worldPos.y;
+      switch (slot.type) {
+        case 'top': case 'under': y += ih / 2; break;
+        case 'interior': case 'drawer': y += ih / 2 - slot.cap[1] / 2; break;
+        case 'soil': y += ih / 4; break;                                   // 半埋进土里
+        case 'pages': mesh.rotation.z = Math.PI / 2; break;                // 竖着夹进书页
+        case 'behind': mesh.rotation.x = Math.PI / 2; y += ih / 2; break;  // 立在相框后
+      }
+      pos = new THREE.Vector3(slot.worldPos.x, y, slot.worldPos.z);
+      if (slot.type === 'top') mesh.rotation.y = (Math.random() - 0.5) * 0.6;
     }
-    mesh.position.set(slot.worldPos.x, y, slot.worldPos.z);
-    if (slot.type === 'top') mesh.rotation.y = (Math.random() - 0.5) * 0.6;
-    mesh.userData = { isTargetItem: true, itemId, pieceId, slotKey };
+    // 放入动作：从槽位上方 0.35m 落入
+    mesh.position.copy(pos).add(new THREE.Vector3(0, 0.35, 0));
+    mesh.userData = { isTargetItem: true, itemId, pieceId, slotKey,
+      ...(extra.bookIndex != null ? { bookIndex: extra.bookIndex } : {}) };
     this.ctx.scene.add(mesh);
+    this.dropAnims.push({ mesh, from: mesh.position.clone(), to: pos.clone(), t: 0 });
     this.placedItems.push(mesh);
     slot.filledWith = itemId;
+    if (extra.bookIndex != null) slot.bookIndex = extra.bookIndex;
     return { ok: true };
+  }
+
+  // 藏匿时把物品藏进第 b 本书后，让找家阶段的开合指向那本书
+  remapBookEntry(pieceId, slotKey, bookIndex) {
+    const entry = this.openBySlotKey[`${pieceId}:${slotKey}`];
+    const piece = this.pieces.find(p => p.def.id === pieceId);
+    const book = piece?.parts.books?.[bookIndex];
+    if (entry && book) {
+      entry.node = book;
+      const baseZ = book.userData.baseZ ?? book.position.z;
+      entry.base = new THREE.Vector3(book.position.x, book.position.y, baseZ);
+    }
   }
 
   removeItem(mesh) {
