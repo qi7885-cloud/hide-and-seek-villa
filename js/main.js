@@ -144,6 +144,12 @@ async function init() {
   // 计时 tick 挂进主循环
   tickHandlers.push((dt) => game.tick(dt));
 
+  // Esc 退出本局（游戏中按 Esc；指针锁定时浏览器会先解锁并派发该按键，多数情况一次生效）
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape') return;
+    if (game.phase === 'hide' || game.phase === 'seek') game.quitToMenu();
+  });
+
   // 调试接口（浏览器控制台可用 __game.pos 查看位置）
   window.__game = { ctx, player, colliders, villa, pieces, interact, placement, game, godCam, pip, canHide, itemById };
 
