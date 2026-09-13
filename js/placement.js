@@ -93,7 +93,7 @@ export class PlacementUI {
       }
     });
     if (!valid.length) html += `<p class="slot-note">这里已经藏满了</p>`;
-    else html += `<p class="slot-note">按 <b>1-${valid.length}</b> 选位置；按 <b>Q</b> 关闭面板</p>`;
+    else html += `<p class="slot-note">按序号选位置，按 <b>Q</b> 关闭面板</p>`;
     this.fpSlots = valid;
     this.panelEl.innerHTML = html;
     this.panelEl.classList.remove('hidden');
