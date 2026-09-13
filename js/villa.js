@@ -129,9 +129,9 @@ export function buildVilla(scene, colliders) {
   const win = (at) => ({ at, w: 1.4, y0: 0.95, y1: 2.15, glass: true }); // 标准窗
   const door = (at, extra = {}) => ({ at, w: 1.05, y1: 2.15, ...extra }); // 标准门洞
 
-  // 外墙（含正门与各窗）
+  // 外墙（含正门与各窗；北墙厨房侧不留窗——楼梯贴墙而上）
   buildWall(scene, colliders, { axis: 'x', at: -5.5 - EXT_T / 2, from: -7.62, to: 7.62, thickness: EXT_T, mat: extMat, frameMat,
-    openings: [win(-3.75), win(3.75)] });                                   // 北墙
+    openings: [win(-3.75)] });                                              // 北墙
   buildWall(scene, colliders, { axis: 'x', at: 5.5 + EXT_T / 2, from: -7.62, to: 7.62, thickness: EXT_T, mat: extMat, frameMat,
     openings: [win(-3.75), win(3.75)] });                                   // 南墙
   buildWall(scene, colliders, { axis: 'z', at: -7.5 - EXT_T / 2, from: -5.5, to: 5.5, thickness: EXT_T, mat: extMat, frameMat,

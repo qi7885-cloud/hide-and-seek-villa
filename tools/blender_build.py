@@ -834,15 +834,29 @@ def room_trim(key, r):
         rng = (r['minX'], r['maxX']) if axis == 'x' else (r['minZ'], r['maxZ'])
         run(axis, at, rng[0], rng[1], WALL_H - MOLD_H / 2 - 0.02, MOLD_H, 0.06, dirn, f'mold{side}')
         run(axis, at, rng[0], rng[1], BASE_H / 2, BASE_H, 0.04, dirn, f'base{side}')
-    # 灯槽发光带
+    # 灯槽发光带（厨房北边灯槽避开楼梯井，不再横穿楼梯）
     in2 = 0.22
     cx, cz = (r['minX'] + r['maxX']) / 2, (r['minZ'] + r['maxZ']) / 2
-    for i, (w, h, d, px, py, pz) in enumerate([
-            (r['maxX'] - r['minX'] - in2 * 2, 0.035, 0.04, cx, WALL_H - 0.12, r['minZ'] + in2),
-            (r['maxX'] - r['minX'] - in2 * 2, 0.035, 0.04, cx, WALL_H - 0.12, r['maxZ'] - in2),
-            (0.04, 0.035, r['maxZ'] - r['minZ'] - in2 * 2, r['minX'] + in2, WALL_H - 0.12, cz),
-            (0.04, 0.035, r['maxZ'] - r['minZ'] - in2 * 2, r['maxX'] - in2, WALL_H - 0.12, cz)]):
-        reg(B(w, h, d, px, py, pz, M('cove'), f'{key}_cove{i}', 0))
+    cove_edges = [
+        ('x', r['maxX'] - r['minX'] - in2 * 2, cx, r['minZ'] + in2),
+        ('x', r['maxX'] - r['minX'] - in2 * 2, cx, r['maxZ'] - in2),
+        ('z', r['maxZ'] - r['minZ'] - in2 * 2, r['minX'] + in2, cz),
+        ('z', r['maxZ'] - r['minZ'] - in2 * 2, r['maxX'] - in2, cz),
+    ]
+    cove_skip = {'kitchen': [(1.0, 6.7)]}.get(r['id'])   # 北边灯槽跳过楼梯段
+    for i, (axis, ln, pc, at) in enumerate(cove_edges):
+        segs = [(pc - ln / 2, pc + ln / 2)]
+        if cove_skip and i == 0 and axis == 'x':
+            segs, cur = [], cove_skip and segs[0][0]
+            for a, b in cove_skip:
+                if a > cur: segs.append((cur, min(a, pc + ln / 2)))
+                cur = max(cur, b)
+            if cur < pc + ln / 2: segs.append((cur, pc + ln / 2))
+        for j, (a, b) in enumerate(segs):
+            if axis == 'x':
+                reg(B(b - a, 0.035, 0.04, (a + b) / 2, WALL_H - 0.12, at, M('cove'), f'{key}_cove{i}_{j}', 0))
+            else:
+                reg(B(0.04, 0.035, b - a, at, WALL_H - 0.12, (a + b) / 2, M('cove'), f'{key}_cove{i}_{j}', 0))
 
 def curtain_v(key, axis, wall_at, dirn, center_at, w=1.4, spread=0.65, shift=0):
     rodY, off = 2.32, 0.14 + 0.05
@@ -910,17 +924,16 @@ def wainscot_v(key, axis, at, dirn, from_, to_):
 def build_villa_v():
     win = lambda at: {'at': at, 'w': 1.4, 'y0': 0.95, 'y1': 2.15}
     door = lambda at, **ex: dict({'at': at, 'w': 1.05, 'y1': 2.15}, **ex)
-    # 外墙
-    wall_v('wallN', 'x', -5.5 - EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'), [win(-3.75), win(3.75)])
+    # 外墙（北墙厨房侧不留窗：楼梯贴墙而上，窗被台阶穿过）
+    wall_v('wallN', 'x', -5.5 - EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'), [win(-3.75)])
     wall_v('wallS', 'x', 5.5 + EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'), [win(-3.75), win(3.75)])
     wall_v('wallW', 'z', -7.5 - EXT_T / 2, -5.5, 5.5, EXT_T, M('plaster_ext'), [win(-4.3), door(-2.5, doorLeaf=True)])
     wall_v('wallE', 'z', 7.5 + EXT_T / 2, -5.5, 5.5, EXT_T, M('plaster_ext'), [win(-2.75), win(2.75)])
     # 内墙
     wall_v('wallX1', 'x', 0, -7.5, 7.5, INT_T, M('plaster_int'), [door(-3.75), door(3.75)])
     wall_v('wallZ1', 'z', 0, -5.5, 5.5, INT_T, M('plaster_int'), [{'at': -3, 'w': 1.4, 'y1': 2.15}, door(3)])
-    # 窗
+    # 窗（北墙仅客厅侧一扇）
     window_v('winN1', 'x', -5.5 - EXT_T / 2, -3.75, 1.4, 0.95, 2.15, True)
-    window_v('winN2', 'x', -5.5 - EXT_T / 2, 3.75, 1.4, 0.95, 2.15, True)
     window_v('winS1', 'x', 5.5 + EXT_T / 2, -3.75, 1.4, 0.95, 2.15, True)
     window_v('winS2', 'x', 5.5 + EXT_T / 2, 3.75, 1.4, 0.95, 2.15, True)
     window_v('winW1', 'z', -7.5 - EXT_T / 2, -4.3, 1.4, 0.95, 2.15, True)
