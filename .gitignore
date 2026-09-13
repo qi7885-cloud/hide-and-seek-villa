@@ -9,3 +9,9 @@ Desktop.ini
 
 # 日志
 *.log
+
+# Netlify CLI 本地状态
+.netlify/
+
+# Node
+node_modules/

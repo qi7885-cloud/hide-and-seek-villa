@@ -2,21 +2,37 @@
 
 本地双人网页游戏：一人在 3D 别墅里藏东西，另一人限时搜出来。
 
-![技术栈](https://img.shields.io/badge/Three.js-0.186-blue) ![物理](https://img.shields.io/badge/物理-轻量AABB-green) ![依赖](https://img.shields.io/badge/运行依赖-零-success)
+![技术栈](https://img.shields.io/badge/Three.js-0.186-blue) ![建模](https://img.shields.io/badge/建模-Blender-orange) ![依赖](https://img.shields.io/badge/运行依赖-零-success)
 
 ## 🚀 快速开始
 
-**方式一（推荐）**：双击 `启动游戏.bat`，浏览器会自动打开游戏。
+**方式一（在线玩）**：打开部署好的 Netlify 链接即可（见下方「在线部署」）。
 
-**方式二**：命令行启动
+**方式二（本地玩）**：双击 `启动游戏.bat`，浏览器会自动打开游戏。
+
+**方式三（命令行）**：
 
 ```bash
-cd hide-and-seek
 node server.js
 # 浏览器打开 http://127.0.0.1:8080
 ```
 
-> 运行只需 Node.js（任意较新版本），**无需 npm install**，完全离线可玩。
+> 运行只需 Node.js（任意较新版本），**无需 npm install**，完全离线可玩。也可以用任意静态服务器直接托管本目录（见 `netlify.toml`）。
+
+## 🌐 在线部署（Netlify）
+
+纯静态站点，无需构建：
+
+- **网页方式**：登录 [app.netlify.com](https://app.netlify.com) → "Add new site" → "Import an existing project" → 选本仓库 → 直接 Deploy（发布目录为仓库根目录，`netlify.toml` 已配置好缓存与 MIME）
+- **命令行方式**：
+
+```bash
+npx netlify-cli deploy --prod --dir .
+```
+
+## 🤝 双人规则
+
+两个玩家共用一台电脑：**藏家**先第一视角把物品藏进家具（柜门/抽屉会真实打开），完成后把电脑交给**找家**；找家在限时内翻遍全屋，全部找出则找家获胜，否则藏家获胜。多回合累计比分。
 
 ## 🎮 玩法
 

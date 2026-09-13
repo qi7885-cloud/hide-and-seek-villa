@@ -1,0 +1,35 @@
+# Netlify 部署配置 — 纯静态站点，无需构建
+[build]
+  publish = "."
+
+# 默认响应头
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# HTML 不缓存（更新即时生效）
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# 3D 模型较大，允许浏览器缓存一小时
+[[headers]]
+  for = "/models/*.glb"
+  [headers.values]
+    Content-Type = "model/gltf-binary"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/models/pieces/*.glb"
+  [headers.values]
+    Content-Type = "model/gltf-binary"
+    Cache-Control = "public, max-age=3600"
+
+# 静态资源带指纹语义（vendor/three.js），缓存一天
+[[headers]]
+  for = "/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
