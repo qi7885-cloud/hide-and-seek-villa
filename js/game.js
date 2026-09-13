@@ -90,7 +90,18 @@ export class Game {
     this._crosshair(true);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 限时搜索`);
     this._foundHud();
+    this._helpBar(`【找家】<b>WASD</b> 移动 <span class="hb-sep">|</span> <b>Shift</b> 跑 <span class="hb-sep">|</span> ` +
+      `<b>E</b> 开门/检查/拿取 <span class="hb-sep">|</span> <b>Esc</b> 退出本局 <span class="hb-sep">|</span> ` +
+      `规则：找出藏家藏的全部 <b>${this.targets.length}</b> 件物品`);
     this.toast(`你是找家！共有 ${this.targets.length} 件物品等着你找`);
+  }
+
+  // 底部操作提示条（null = 隐藏）
+  _helpBar(html) {
+    const el = document.getElementById('help-bar');
+    if (!el) return;
+    if (html) { el.innerHTML = html; el.classList.remove('hidden'); }
+    else el.classList.add('hidden');
   }
 
   // ---- 找到一件 ----
@@ -118,6 +129,7 @@ export class Game {
     document.getElementById('timer').classList.add('hidden');
     document.getElementById('hint-chip').classList.add('hidden');
     document.getElementById('found-counter').classList.add('hidden');
+    this._helpBar(null);
     this._crosshair(false);
     if (found) { this.score.seeker++; SFX.found(); }
     else { this.score.hider++; SFX.lost(); }
@@ -191,6 +203,7 @@ export class Game {
     document.getElementById('timer').classList.add('hidden');
     document.getElementById('hint-chip').classList.add('hidden');
     document.getElementById('found-counter').classList.add('hidden');
+    this._helpBar(null);
     this._crosshair(false);
     document.getElementById('screen-menu').classList.remove('hidden');
   }

@@ -1,6 +1,7 @@
 // placement.js — 藏家放置 UI：
 // 流程：瞄准家具按 E → 打开家具+选位置(槽位序号) → 按物品序号藏入（物品落入动画）
 // 书架书页间：瞄准哪本书就藏进哪本（面板实时显示 Vol.N，书本抽出→藏入→放回）
+// 底部物品栏已取消（选位置后面板内直接选物品），底部改为操作提示条
 import { canHide, SLOT_LABELS } from './slots.js';
 import { ITEM_DEFS } from './items.js';
 
@@ -20,7 +21,7 @@ export class PlacementUI {
     this.openedPieceId = null;    // 被面板联动打开的家具（关闭时合上）
     this.aimedBook = null;        // 书本瞄准模式下的准星书本
 
-    this.trayEl = document.getElementById('item-tray');
+    this.helpEl = document.getElementById('help-bar');
     this.panelEl = document.getElementById('slot-panel');
 
     window.addEventListener('keydown', (e) => this._onKey(e));
@@ -37,8 +38,8 @@ export class PlacementUI {
     this.aimedBook = null;
     this.fpSlots = [];
     this.panelEl.classList.add('hidden');
-    this._renderTray();
-    this.trayEl.classList.remove('hidden');
+    this.helpEl.classList.remove('hidden');
+    this._updateHelp();
     this._toast(`你是藏家！选中您要藏的家具按 <b>E</b> 选择位置，再按物品序号进行藏匿（本回合可藏 ${this.maxItems} 件）`);
   }
 
@@ -46,28 +47,20 @@ export class PlacementUI {
     this.active = false;
     this._closePiece();
     this.stage = 'idle';
-    this.trayEl.classList.add('hidden');
+    this.helpEl.classList.add('hidden');
     this.panelEl.classList.add('hidden');
   }
 
   _toast(msg) { if (this.onToast) this.onToast(msg); }
 
-  _renderTray() {
-    this.trayEl.innerHTML = '';
-    ITEM_DEFS.forEach((item, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'tray-btn';
-      const cm = (v) => Math.round(v * 100);
-      btn.innerHTML = `<b>${i + 1}</b>·${item.name}<span class="size-tag">${cm(item.size[0])}×${cm(item.size[2])}×${cm(item.size[1])}cm</span>`;
-      btn.onclick = () => this._pickItem(item);
-      this.trayEl.appendChild(btn);
-    });
-    const done = document.createElement('button');
-    done.className = 'tray-btn';
-    done.style.borderColor = '#58d68d';
-    done.innerHTML = `<b>G</b>·完成藏匿`;
-    done.onclick = () => this._tryFinish();
-    this.trayEl.appendChild(done);
+  // 底部提示条：按键 + 规则 + 进度
+  _updateHelp() {
+    if (!this.active) return;
+    this.helpEl.innerHTML =
+      `【藏家】瞄准家具按 <b>E</b> 选位置 → 数字键藏物品 <span class="hb-sep">|</span>` +
+      `<b>Q</b> 关闭面板 <span class="hb-sep">|</span> <b>G</b> 完成藏匿 <span class="hb-sep">|</span> ` +
+      `<b>Esc</b> 退出本局 <span class="hb-sep">|</span> ` +
+      `规则：把 ${this.maxItems} 件物品藏好交给对方找 · <span class="hb-count">已藏 ${this.placedCount}/${this.maxItems} 件</span>`;
   }
 
   // E 瞄准家具后由 interact 调用：书本瞄准模式下=确认藏入；否则打开槽位面板
@@ -87,7 +80,6 @@ export class PlacementUI {
     this.stage = 'slot';
     this.slot = null;
     this.fpSlots = [];
-    const cm = (v) => Math.round(v * 100);
     let html = `<h3>藏到：${piece.def.name} —— 选位置</h3>`;
     const valid = [];
     piece.slots.forEach((slot) => {
@@ -95,8 +87,7 @@ export class PlacementUI {
       const tag = occupied ? '（已有东西）' : '';
       if (!occupied) {
         valid.push(slot);
-        const cap = slot.cap ? `<span class="size-tag">容 ${cm(slot.cap[0])}×${cm(slot.cap[2])}×${cm(slot.cap[1])}cm</span>` : '';
-        html += `<button class="slot-btn ok" data-idx="${valid.length}"><b>${valid.length}</b>·${slot.name} · ${SLOT_LABELS[slot.type] || '藏点'}${cap}</button>`;
+        html += `<button class="slot-btn ok" data-idx="${valid.length}"><b>${valid.length}</b>·${slot.name} · ${SLOT_LABELS[slot.type] || '藏点'}</button>`;
       } else {
         html += `<button class="slot-btn no" disabled>${slot.name}${tag}</button>`;
       }
@@ -111,21 +102,17 @@ export class PlacementUI {
     });
   }
 
-  // 选好位置 → 展示可藏的物品（含尺寸，放不下的标灰）
+  // 选好位置 → 展示可藏的物品（放不下的灰显不可选）
   _chooseSlot(slot) {
     this.stage = 'item';
     this.slot = slot;
-    const cm = (v) => Math.round(v * 100);
-    const capTxt = slot.cap ? `${cm(slot.cap[0])}×${cm(slot.cap[2])}×${cm(slot.cap[1])}cm` : '—';
-    let html = `<h3>位置：${this.piece.def.name} · ${slot.name}（容 ${capTxt}）—— 选物品</h3>`;
+    let html = `<h3>位置：${this.piece.def.name} · ${slot.name} —— 选物品</h3>`;
     ITEM_DEFS.forEach((item, i) => {
       const check = canHide(item, slot);
-      const cls = check.ok ? 'ok' : 'no';
-      const sz = `${cm(item.size[0])}×${cm(item.size[2])}×${cm(item.size[1])}cm`;
       if (check.ok) {
-        html += `<button class="slot-btn ok" data-item="${item.id}"><b>${i + 1}</b>·${item.name}<span class="size-tag">${sz}</span></button>`;
+        html += `<button class="slot-btn ok" data-item="${item.id}"><b>${i + 1}</b>·${item.name}</button>`;
       } else {
-        html += `<button class="slot-btn no" disabled><b>${i + 1}</b>·${item.name}<span class="size-tag">${sz}（${check.why}）</span></button>`;
+        html += `<button class="slot-btn no" disabled><b>${i + 1}</b>·${item.name}</button>`;
       }
     });
     html += `<p class="slot-note">按 <b>1-8</b> 藏入对应物品；按 <b>Q</b> 返回选位置</p>`;
@@ -159,6 +146,7 @@ export class PlacementUI {
       this.slot = null;
       this.stage = 'slot';
       this.aimedBook = null;
+      this._updateHelp();
       this.openSlotPanelFor(this.piece);   // 回到选位置，可继续藏
       if (this.placedCount >= this.maxItems) {
         this._toast(`已藏满 ${this.maxItems} 件，按 <b>G</b> 完成藏匿`);
@@ -182,8 +170,7 @@ export class PlacementUI {
   _confirmBook() {
     if (!this.aimedBook) { this._toast('准星没有对准任何一本书'); return; }
     this.stage = 'item';
-    this._renderTray();
-    // 直接进入物品选择（书页间只容纸类，面板上会标出来）
+    // 直接进入物品选择（书页间只容纸类，放不下的会灰显）
     this._chooseSlot(this.slot);
   }
 
@@ -223,11 +210,6 @@ export class PlacementUI {
       const h3 = this.panelEl.querySelector('h3');
       if (h3) h3.innerHTML = `藏进书页间 —— 将藏入：<b>${name}</b>`;
     }
-  }
-
-  _pickItem(item) {
-    if (this.stage === 'item' && this.slot) { this._placeItem(item); return; }
-    this._toast('先瞄准家具按 <b>E</b> 选位置');
   }
 
   _onKey(e) {

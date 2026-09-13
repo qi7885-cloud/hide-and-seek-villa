@@ -95,18 +95,15 @@ body { font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; col
 #slot-panel .slot-note { font-size: 12px; color: #9fb0c3; margin-top: 4px; }
 #slot-panel .btn-primary { margin-top: 10px; width: 100%; }
 
-#item-tray {
+#help-bar {
   position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
-  display: flex; gap: 10px; padding: 12px; z-index: 20;
-  background: rgba(12,17,26,.92); border: 1px solid rgba(255,255,255,.2); border-radius: 12px;
+  max-width: 86vw; padding: 10px 22px; z-index: 15; text-align: center;
+  background: rgba(12,17,26,.82); border: 1px solid rgba(255,255,255,.16); border-radius: 12px;
+  font-size: 13.5px; color: #c8d4e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-#item-tray .tray-btn {
-  padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 14px;
-  background: rgba(255,255,255,.08); border: 2px solid transparent; color: #e8ecf1; text-align: center;
-}
-#item-tray .tray-btn:hover { background: rgba(255,255,255,.16); }
-#item-tray .tray-btn.selected { border-color: #ffd166; background: rgba(255,209,102,.12); }
-#item-tray .tray-btn .size-tag { display: block; font-size: 11px; color: #9fb0c3; margin-top: 3px; }
+#help-bar b { color: #ffd166; font-weight: 700; }
+#help-bar .hb-sep { color: #5a6b80; margin: 0 8px; }
+#help-bar .hb-count { color: #8fd6a8; }
 
 /* ============ 全屏遮罩 ============ */
 .screen {
