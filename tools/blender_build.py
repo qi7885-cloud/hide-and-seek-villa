@@ -426,15 +426,19 @@ def HOLLOW_TOP(w, h, d, x, y, z, mat, name, t=0.025):
     reg(B(w - 2 * t, h, t, x, y, z + d / 2 - t / 2, mat, name + '_front', 0.004))
     reg(B(w - 2 * t, t, d - 2 * t, x, y - h / 2 + t / 2, z, mat, name + '_bottom', 0.004))
 
-def DRAWER_BOX(w, h, d, x, y, z, front_z, mat_front, mat_body, name, t=0.02):
-    """空心抽屉（顶口开放）：外观前板(位于 front_z) + 底/左右/后板，中心(x,y,z)。
-    实心抽屉会让藏进去的物品不可见，故所有抽屉都用本结构。五面板 join 为单一 part 对象。"""
+def DRAWER_BOX(w, h, d, x, y, z, front_z, mat_front, mat_body, name, t=0.02, handle_mat=None):
+    """空心抽屉（顶口开放）：外观前板(位于 front_z) + 底/左右/后板 + 把手，中心(x,y,z)。
+    实心抽屉会让藏进去的物品不可见，故所有抽屉都用本结构。五面板+把手 join 为单一 part 对象，
+    把手随抽屉一起滑动。"""
     front = B(w + 0.05, h + 0.04, 0.028, x, y, front_z, mat_front, name + '_front', 0.005)
     bottom = B(w - 0.04, t, d - 0.06, x, y - h / 2 + t / 2, z, mat_body, name + '_bottom', 0.004)
     left = B(t, h - 0.04, d - 0.06, x - w / 2 + t / 2, y, z, mat_body, name + '_left', 0.004)
     right = B(t, h - 0.04, d - 0.06, x + w / 2 - t / 2, y, z, mat_body, name + '_right', 0.004)
     back = B(w - 0.04, h - 0.04, t, x, y, z - d / 2 + t / 2, mat_body, name + '_back', 0.004)
-    reg(join([front, bottom, left, right, back], name))
+    parts = [front, bottom, left, right, back]
+    if handle_mat:
+        parts.append(B(0.16, 0.03, 0.03, x, y, front_z + 0.022, handle_mat, name + '_handle', 0.005))
+    reg(join(parts, name))
 
 def DISPLACED_SPH(r, x, y, z, mat, name, amp=0.16, seed=0):
     """有机形变球（树冠）"""
@@ -570,10 +574,10 @@ def b_counter():
     reg(CYL(0.02, 0.24, -0.6, 1.0, -0.22, M('steel'), 'faucet', 16))
     sp = CYL(0.015, 0.16, -0.6, 1.11, -0.15, M('steel'), 'spout', 14)
     sp.rotation_euler = (math.pi / 2, 0, 0); _apply(sp); reg(sp)
-    # 抽屉×2（空心，滑出可见内部）
+    # 抽屉×2（空心，滑出可见内部，把手随动）
     for i, dx in enumerate((-0.6, 0.25)):
-        DRAWER_BOX(0.67, 0.15, 0.5, dx, 0.665, 0.0, 0.283, M('wood'), M('wood_body'), f'part_drawer{i+1}')
-        reg(B(0.2, 0.025, 0.025, dx, 0.68, 0.31, M('dark'), f'handle{i+1}', 0.005))
+        DRAWER_BOX(0.67, 0.15, 0.5, dx, 0.665, 0.0, 0.283, M('wood'), M('wood_body'), f'part_drawer{i+1}',
+                   handle_mat=M('dark'))
     reg(join([B(0.72, 0.5, 0.03, -0.6, 0.25, 0.315, M('wood'), 'd', 0.006),
               B(0.12, 0.025, 0.025, -0.6, 0.25, 0.34, M('dark'), 'h')], 'part_cabDoor'))
     reg(B(0.72, 0.5, 0.56, 0.25, 0.25, 0, M('wood_dark'), 'openbox', 0.006))
@@ -636,8 +640,8 @@ def b_bed():
 
 def b_nightstand():
     reg(B(0.45, 0.5, 0.4, 0, 0.28, 0, M('wood'), 'body', 0.008))
-    DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.38, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer')
-    reg(B(0.12, 0.03, 0.03, 0, 0.38, 0.225, M('dark'), 'handle', 0.005))
+    DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.38, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer',
+               handle_mat=M('dark'))
 
 def b_wardrobe():
     # 空心柜体（开门可见内部），挂衣区/顶隔板/叠放衣物/鞋子
@@ -669,15 +673,15 @@ def b_dresser():
         for sz in (-1, 1):
             reg(B(0.05, 0.06, 0.05, sx * 0.4, 0.03, sz * 0.19, M('wood_dark'), f'leg{sx}{sz}', 0.006))
     for i, dy in enumerate((0.58, 0.3)):
-        DRAWER_BOX(0.78, 0.21, 0.34, 0, dy, 0.02, 0.222, M('wood_light'), M('wood_body'), f'part_drawer{i+1}')
-        reg(B(0.16, 0.03, 0.03, 0, dy, 0.245, M('dark'), f'handle{i+1}', 0.005))
+        DRAWER_BOX(0.78, 0.21, 0.34, 0, dy, 0.02, 0.222, M('wood_light'), M('wood_body'), f'part_drawer{i+1}',
+                   handle_mat=M('dark'))
 
 def b_desk():
     reg(B(1.4, 0.05, 0.7, 0, 0.735, 0, M('wood'), 'top', 0.01))
     reg(B(0.05, 0.7, 0.65, -0.66, 0.36, 0, M('wood_dark'), 'sideL', 0.008))
     reg(B(0.05, 0.7, 0.65, 0.66, 0.36, 0, M('wood_dark'), 'sideR', 0.008))
-    DRAWER_BOX(0.45, 0.09, 0.44, 0.35, 0.63, 0.05, 0.3, M('wood_light'), M('wood_body'), 'part_drawer')
-    reg(B(0.14, 0.03, 0.03, 0.35, 0.63, 0.325, M('dark'), 'handle', 0.005))
+    DRAWER_BOX(0.45, 0.09, 0.44, 0.35, 0.63, 0.05, 0.3, M('wood_light'), M('wood_body'), 'part_drawer',
+               handle_mat=M('dark'))
 
 def b_office_chair():
     reg(CYL(0.26, 0.04, 0, 0.04, 0, M('dark'), 'base', 24))
@@ -836,8 +840,8 @@ def b_wall_cabinet():
 def b_file_cabinet():
     reg(B(0.45, 0.6, 0.45, 0, 0.3, 0, M('wood_dark'), 'body', 0.008))
     reg(B(0.4, 0.2, 0.028, 0, 0.15, 0.228, M('wood'), 'front_lower', 0.006))
-    DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.42, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer')
-    reg(B(0.14, 0.03, 0.03, 0, 0.42, 0.245, M('steel'), 'handle', 0.005))
+    DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.42, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer',
+               handle_mat=M('steel'))
 
 def b_bean_bag():
     o = SPH(0.45, 0, 0.31, 0, M('teddy'), 'bag', 24, 18)
