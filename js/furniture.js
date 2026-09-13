@@ -437,6 +437,79 @@ function flowerbed() {
   return { group: g, parts: {} };
 }
 
+// ---- M15 新增家具（GLB 优先，以下为模型缺失时的程序化回退）----
+function shoeCabinet() {
+  const g = new THREE.Group(), P = {};
+  box(g, 0.9, 1.1, 0.35, C.woodLight, 0, 0.55, 0);
+  P.door = box(g, 0.86, 1.04, 0.03, C.wood, 0, 0.55, 0.175);
+  box(g, 0.03, 0.12, 0.03, C.dark, 0.3, 0.55, 0.2);
+  return { group: g, parts: P };
+}
+function sideTable() {
+  const g = new THREE.Group();
+  cyl(g, 0.24, 0.04, C.wood, 0, 0.42, 0, 24);
+  for (let i = 0; i < 3; i++) {
+    const a = i / 3 * Math.PI * 2;
+    cyl(g, 0.016, 0.42, C.woodDark, Math.cos(a) * 0.17, 0.21, Math.sin(a) * 0.17, 12);
+  }
+  cyl(g, 0.19, 0.015, C.wood, 0, 0.14, 0, 20);
+  return { group: g, parts: {} };
+}
+function wallCabinet() {
+  const g = new THREE.Group(), P = {};
+  box(g, 1.0, 0.7, 0.33, C.white, 0, 0.35, 0);
+  P.door = box(g, 0.94, 0.64, 0.028, C.woodLight, 0, 0.35, 0.165);
+  box(g, 0.1, 0.025, 0.025, C.dark, 0.08, 0.35, 0.19);
+  return { group: g, parts: P };
+}
+function fileCabinet() {
+  const g = new THREE.Group(), P = {};
+  box(g, 0.45, 0.6, 0.45, C.woodDark, 0, 0.3, 0);
+  box(g, 0.4, 0.2, 0.028, C.wood, 0, 0.15, 0.228);
+  P.drawer = drawerBox(0.4, 0.18, 0.4, C.wood, 0, 0.42, 0.02);
+  box(g, 0.14, 0.025, 0.025, C.metal, 0, 0.42, 0.24);
+  return { group: g, parts: P };
+}
+function beanBag() {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.45, 24, 18), mat(0xd9c9ae));
+  b.scale.set(1, 0.72, 1); b.position.y = 0.31; b.castShadow = true; g.add(b);
+  const k = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), mat(0xcfb99a));
+  k.position.y = 0.6; k.castShadow = true; g.add(k);
+  return { group: g, parts: {} };
+}
+function backpack() {
+  const g = new THREE.Group();
+  box(g, 0.28, 0.36, 0.14, C.red, 0, 0.18, 0);
+  box(g, 0.2, 0.14, 0.06, C.sofa, 0, 0.12, 0.09);
+  box(g, 0.05, 0.3, 0.02, C.dark, -0.08, 0.2, -0.08);
+  box(g, 0.05, 0.3, 0.02, C.dark, 0.08, 0.2, -0.08);
+  cyl(g, 0.05, 0.03, C.dark, 0, 0.375, 0, 12);
+  return { group: g, parts: {} };
+}
+function bucket() {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.13, 0.3, 20, 1, true),
+    new THREE.MeshLambertMaterial({ color: C.metal, side: THREE.DoubleSide }));
+  wall.position.y = 0.15; wall.castShadow = true; g.add(wall);
+  cyl(g, 0.128, 0.012, C.dark, 0, 0.02, 0, 20);
+  const h = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.008, 8, 20), mat(C.metal));
+  h.position.y = 0.3; h.rotation.x = Math.PI / 2; g.add(h);
+  return { group: g, parts: {} };
+}
+function planter() {
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.42, 24), mat(C.pot));
+  pot.position.y = 0.21; pot.castShadow = true; g.add(pot);
+  cyl(g, 0.28, 0.03, C.greenDark, 0, 0.405, 0, 24);
+  cyl(g, 0.03, 0.4, C.woodDark, 0, 0.6, 0, 12);
+  const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), mat(C.green));
+  s1.position.y = 0.85; s1.castShadow = true; g.add(s1);
+  const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), mat(C.greenDark));
+  s2.position.set(0.12, 0.7, 0.08); s2.castShadow = true; g.add(s2);
+  return { group: g, parts: {} };
+}
+
 // ---------- 布局目录 ----------
 // slots: key/type/name/cap/offset/allowFold/needsTag/openable(引用 parts 的键与动作)
 export const CATALOG = [
@@ -458,7 +531,11 @@ export const CATALOG = [
   { id: 'tv', name: '电视', room: 'living', pos: [-5.75, 0.56, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
   { id: 'plant', name: '盆栽', room: 'living', pos: [-0.7, 0, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
-  { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-7.05, 0, -0.8], rotY: 0, build: floorLamp, slots: [] },
+  { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-3.5, 0, -0.8], rotY: 0, build: floorLamp, slots: [] },
+  { id: 'shoeCabinet', name: '鞋柜', room: 'living', pos: [-7.3, 0, -0.8], rotY: Math.PI / 2, build: shoeCabinet,
+    slots: [{ key: 'inner', type: 'interior', name: '鞋柜里', cap: [0.7, 0.95, 0.24], offset: [0, 0.55, 0] }] },
+  { id: 'sideTable', name: '边几', room: 'living', pos: [-4.1, 0, -0.5], rotY: 0, build: sideTable,
+    slots: [{ key: 'top', type: 'top', name: '几面上', cap: [0.34, 0.18, 0.34], offset: [0, 0.46, 0] }] },
   { id: 'armchair', name: '休闲椅', room: 'living', pos: [-0.85, 0, -1.05], rotY: Math.PI / 2 + 0.5, build: armchair, slots: [] },
 
   // —— 厨房 ——
@@ -486,6 +563,8 @@ export const CATALOG = [
   { id: 'microwave', name: '微波炉', room: 'kitchen', pos: [7.13, 0.9, -3.1], rotY: -Math.PI / 2, build: microwave, collide: false, slots: [] },
   { id: 'trashBin', name: '垃圾桶', room: 'kitchen', pos: [5.8, 0, -0.6], rotY: 0, build: trashBin,
     slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.24, 0.32, 0.24], offset: [0, 0.228, 0] }] },
+  { id: 'wallCabinet', name: '吊柜', room: 'kitchen', pos: [7.28, 1.2, -4.0], rotY: -Math.PI / 2, build: wallCabinet,
+    slots: [{ key: 'inner', type: 'interior', name: '吊柜里', cap: [0.8, 0.56, 0.2], offset: [0, 0.35, 0] }] },
 
   // —— 卧室 ——
   { id: 'bed', name: '床', room: 'bedroom', pos: [-6.39, 0, 3.2], rotY: Math.PI / 2, build: bed,
@@ -504,6 +583,8 @@ export const CATALOG = [
     ] },
   { id: 'rugB', name: '床边毯', room: 'bedroom', pos: [-4.3, 0, 2.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
     slots: [{ key: 'under', type: 'under', name: '毯子下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
+  { id: 'pictureFrame3', name: '相框', room: 'bedroom', pos: [-2.0, 0.81, 0.4], rotY: 0, build: pictureFrame, collide: false,
+    slots: [{ key: 'behind', type: 'behind', name: '相框后面', cap: [0.3, 0.22, 0.02], offset: [0, 0.16, -0.03], needsTag: 'thin' }] },
 
   // —— 书房 ——
   { id: 'desk', name: '书桌', room: 'study', pos: [3.75, 0, 5.09], rotY: Math.PI, build: desk,
@@ -512,6 +593,10 @@ export const CATALOG = [
       { key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.4, 0.08, 0.36], offset: [0.35, 0.63, 0] },
     ] },
   { id: 'officeChair', name: '转椅', room: 'study', pos: [3.75, 0, 4.2], rotY: 0, build: officeChair, slots: [] },
+  { id: 'fileCabinet', name: '文件柜', room: 'study', pos: [2.55, 0, 5.15], rotY: Math.PI, build: fileCabinet,
+    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.3, 0.12, 0.32], offset: [0, 0.42, 0] }] },
+  { id: 'rug2', name: '地毯', room: 'study', pos: [3.75, 0, 4.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
+    slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
   { id: 'computerCase', name: '电脑主机', room: 'study', pos: [4.75, 0, 5.0], rotY: Math.PI, build: computerCase,
     slots: [{ key: 'inner', type: 'interior', name: '机箱内', cap: [0.13, 0.3, 0.32], offset: [0, 0.23, 0] }] },
   { id: 'monitor', name: '显示器', room: 'study', pos: [3.6, 0.76, 5.2], rotY: Math.PI, build: monitor, collide: false, slots: [] },
@@ -544,6 +629,7 @@ export const CATALOG = [
     ] },
   { id: 'plant2', name: '盆栽', room: 'lounge2', pos: [-0.7, 3.15, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
+  { id: 'beanBag', name: '懒人沙发', room: 'lounge2', pos: [-3.0, 3.15, -2.6], rotY: 0.4, build: beanBag, slots: [] },
 
   // —— 二楼 · 储物间（楼梯西侧，注意避开门洞 x>4.6, z<-4.55）——
   { id: 'shelfUnit', name: '储物架', room: 'storage', pos: [6.9, 3.15, -2.2], rotY: -Math.PI / 2, build: shelfUnit,
@@ -556,6 +642,8 @@ export const CATALOG = [
     slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.2, 0] }] },
   { id: 'crate2', name: '纸箱', room: 'storage', pos: [2.6, 3.15, -2.6], rotY: -0.4, build: crate,
     slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.2, 0] }] },
+  { id: 'bucket', name: '水桶', room: 'storage', pos: [1.6, 3.15, -1.2], rotY: 0.3, build: bucket,
+    slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.26, 0.26, 0.26], offset: [0, 0.17, 0] }] },
 
   // —— 二楼 · 主卧 ——
   { id: 'bed2', name: '大床', room: 'master', pos: [-6.39, 3.15, 3.2], rotY: Math.PI / 2, build: bed,
@@ -572,6 +660,7 @@ export const CATALOG = [
     ] },
   { id: 'nightstand2', name: '床头柜', room: 'master', pos: [-7.22, 3.15, 4.35], rotY: Math.PI / 2, build: nightstand,
     slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.38, 0] }] },
+  { id: 'floorLamp2', name: '落地灯', room: 'master', pos: [-7.05, 3.15, 4.9], rotY: 0, build: floorLamp, slots: [] },
 
   // —— 二楼 · 儿童房 ——
   { id: 'bedKids', name: '儿童床', room: 'kids', pos: [6.4, 3.15, 3.9], rotY: -Math.PI / 2, build: bed,
@@ -583,6 +672,10 @@ export const CATALOG = [
       { key: 'top', type: 'top', name: '桌面上', cap: [1.1, 0.2, 0.45], offset: [0, 0.79, 0.02] },
       { key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.4, 0.08, 0.36], offset: [0.35, 0.63, 0] },
     ] },
+  { id: 'backpack', name: '书包', room: 'kids', pos: [4.8, 3.15, 2.8], rotY: 0.5, build: backpack,
+    slots: [{ key: 'inner', type: 'interior', name: '书包里', cap: [0.22, 0.28, 0.1], offset: [0, 0.22, 0] }] },
+  { id: 'plant3', name: '盆栽', room: 'kids', pos: [1.5, 3.15, 4.8], rotY: 0, build: plant,
+    slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
 
   // —— 庭院 ——
   { id: 'bench', name: '长椅', room: 'yard', pos: [4.5, 0, 6.6], rotY: Math.PI, build: bench,
@@ -591,6 +684,8 @@ export const CATALOG = [
     slots: [{ key: 'inner', type: 'interior', name: '信箱里', cap: [0.16, 0.12, 0.28], offset: [0, 1.12, 0] }] },
   { id: 'flowerbed', name: '花坛', room: 'yard', pos: [5.5, 0, 6.9], rotY: 0, build: flowerbed,
     slots: [{ key: 'soil', type: 'soil', name: '花坛土里', cap: [1.4, 0.06, 0.6], offset: [0, 0.26, 0] }] },
+  { id: 'planter', name: '大花盆', room: 'yard', pos: [7.6, 0, 6.5], rotY: 0, build: planter,
+    slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.3, 0.08, 0.3], offset: [0, 0.42, 0] }] },
 ];
 
 // ---------- 总装 ----------

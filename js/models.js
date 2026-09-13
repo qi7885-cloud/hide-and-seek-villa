@@ -25,6 +25,10 @@ const PIECE_MODEL = {
   bookshelf: 'bookshelf', bookshelf2: 'bookshelf', pictureFrame: 'picture_frame',
   toyChest: 'chest', shelfUnit: 'shelf_unit', crate1: 'crate', crate2: 'crate',
   bench: 'bench', mailbox: 'mailbox', flowerbed: 'flowerbed',
+  shoeCabinet: 'shoe_cabinet', sideTable: 'side_table', wallCabinet: 'wall_cabinet',
+  fileCabinet: 'file_cabinet', beanBag: 'bean_bag', backpack: 'backpack',
+  bucket: 'bucket', planter: 'planter', floorLamp2: 'floor_lamp', plant3: 'plant',
+  rug2: 'rug_small', pictureFrame3: 'picture_frame',
 };
 const STATIC_MODEL = ['villa', 'yard', 'avatar'];
 const ITEM_IDS = ['note', 'card', 'key', 'coin', 'ring', 'eraser', 'ball', 'remote'];

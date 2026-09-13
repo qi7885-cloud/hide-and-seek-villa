@@ -749,6 +749,55 @@ def b_flowerbed():
         reg(SPH(0.07, fx, 0.36, 0.14 if i % 2 else -0.12, M(f'flower{(i % 3) + 1}'), f'fl{i}', 10, 8))
         reg(CYL(0.012, 0.09, fx, 0.29, 0.14 if i % 2 else -0.12, M('leaf2'), f'st{i}', 8))
 
+# ---- M15 新增家具 ----
+def b_shoe_cabinet():
+    reg(B(0.9, 1.1, 0.35, 0, 0.55, 0, M('wood_light'), 'body', 0.008))
+    reg(join([B(0.86, 1.04, 0.03, 0, 0.55, 0.175, M('wood'), 'd', 0.006),
+              B(0.03, 0.12, 0.025, 0.3, 0.55, 0.2, M('dark'), 'h', 0.004)], 'part_door'))
+
+def b_side_table():
+    reg(CYL(0.24, 0.04, 0, 0.42, 0, M('wood'), 'top', 24))
+    for i in range(3):
+        a = i / 3 * math.pi * 2
+        reg(CYL(0.016, 0.42, math.cos(a) * 0.17, 0.21, math.sin(a) * 0.17, M('wood_dark'), f'leg{i}', 12))
+    reg(CYL(0.19, 0.015, 0, 0.14, 0, M('wood'), 'shelf', 20))
+
+def b_wall_cabinet():
+    reg(B(1.0, 0.7, 0.33, 0, 0.35, 0, M('white'), 'body', 0.008))
+    reg(join([B(0.94, 0.64, 0.028, 0, 0.35, 0.165, M('wood_light'), 'd', 0.006),
+              B(0.1, 0.025, 0.025, 0.08, 0.35, 0.19, M('dark'), 'h', 0.004)], 'part_door'))
+
+def b_file_cabinet():
+    reg(B(0.45, 0.6, 0.45, 0, 0.3, 0, M('wood_dark'), 'body', 0.008))
+    reg(B(0.4, 0.2, 0.028, 0, 0.15, 0.228, M('wood'), 'front_lower', 0.006))
+    reg(join([B(0.4, 0.18, 0.028, 0, 0.42, 0.228, M('wood'), 'f', 0.006),
+              B(0.34, 0.13, 0.4, 0, 0.42, 0.0, M('wood_body'), 'b', 0.004),
+              B(0.14, 0.025, 0.025, 0, 0.42, 0.25, M('steel'), 'h', 0.004)], 'part_drawer'))
+
+def b_bean_bag():
+    o = SPH(0.45, 0, 0.31, 0, M('teddy'), 'bag', 24, 18)
+    o.scale = (1.0, 0.72, 1.0); _apply(o); reg(o)
+    reg(SPH(0.09, 0, 0.6, 0, M('teddy_d'), 'knot', 12, 10))
+
+def b_backpack():
+    reg(B(0.28, 0.36, 0.14, 0, 0.18, 0, M('shirt'), 'body', 0.03))
+    reg(B(0.2, 0.14, 0.06, 0, 0.12, 0.09, M('mailbox'), 'pocket', 0.02))
+    reg(B(0.05, 0.3, 0.02, -0.08, 0.2, -0.08, M('dark'), 'strapL', 0.008))
+    reg(B(0.05, 0.3, 0.02, 0.08, 0.2, -0.08, M('dark'), 'strapR', 0.008))
+    reg(CYL(0.05, 0.03, 0, 0.375, 0, M('dark'), 'handle', 12))
+
+def b_bucket():
+    reg(TUBE(0.16, 0.13, 0.3, 0, 0.15, 0, M('steel_dark'), 'wall', 20))
+    reg(CYL(0.128, 0.012, 0, 0.02, 0, M('dark'), 'bottom', 20))
+    reg(TORUS(0.14, 0.008, 0, 0.3, 0, M('steel'), 'handle', rot_bl=(math.pi / 2, 0, 0)))
+
+def b_planter():
+    reg(CONE(0.24, 0.3, 0.42, 0, 0.21, 0, M('pot'), 'pot', 24))
+    reg(CYL(0.28, 0.03, 0, 0.405, 0, M('soil'), 'soil', 24))
+    reg(CYL(0.03, 0.4, 0, 0.6, 0, M('bark'), 'stem', 12))
+    reg(DISPLACED_SPH(0.24, 0, 0.85, 0, M('leaf1'), 'leaf1', 0.15, seed=5))
+    reg(DISPLACED_SPH(0.16, 0.12, 0.7, 0.08, M('leaf2'), 'leaf2', 0.17, seed=9))
+
 # 文件名 -> 构建函数
 PIECE_BUILDERS = {
     'sofa': b_sofa, 'coffee_table': b_coffee_table, 'tv_cabinet': b_tv_cabinet, 'tv': b_tv,
@@ -761,6 +810,9 @@ PIECE_BUILDERS = {
     'monitor': b_monitor, 'bookshelf': b_bookshelf, 'picture_frame': b_picture_frame,
     'chest': b_chest, 'shelf_unit': b_shelf_unit, 'crate': b_crate, 'bench': b_bench,
     'mailbox': b_mailbox, 'flowerbed': b_flowerbed,
+    'shoe_cabinet': b_shoe_cabinet, 'side_table': b_side_table, 'wall_cabinet': b_wall_cabinet,
+    'file_cabinet': b_file_cabinet, 'bean_bag': b_bean_bag, 'backpack': b_backpack,
+    'bucket': b_bucket, 'planter': b_planter,
 }
 
 # ---------------------------------------------------------------- 别墅结构（villa.glb，世界坐标）
@@ -1028,6 +1080,31 @@ def build_villa_v():
     bubble_lamp_v('bub', 3.4, WALL_H - 0.55, -2.3)
     # 厨房挡水板（止于窗缘，不遮挡东窗）
     reg(B(0.03, 0.6, 1.4, 7.5 - 0.05 - 0.015, 1.2, -4.2, M('trim'), 'backsplash', 0.004))
+    # ---- 装饰小物（增加生活气息，无碰撞）----
+    # 厨房台面：水壶 + 砧板
+    reg(CYL(0.085, 0.16, 6.85, 0.99, -2.7, M('steel'), 'kettle', 20))
+    reg(CYL(0.05, 0.02, 6.85, 1.08, -2.7, M('steel_dark'), 'kettle_lid', 16))
+    sp = CYL(0.014, 0.1, 6.77, 1.0, -2.64, M('steel'), 'kettle_spout', 10)
+    sp.rotation_euler = (0, 0, math.pi / 4); _apply(sp); reg(sp)
+    reg(TORUS(0.06, 0.008, 6.94, 1.03, -2.7, M('dark'), 'kettle_handle', rot_bl=(math.pi / 2, 0, 0)))
+    reg(B(0.35, 0.018, 0.25, 6.85, 0.911, -4.75, M('wood_light'), 'board', 0.006))
+    # 客厅北墙：挂钟
+    rim = CYL(0.16, 0.03, -2.0, 2.2, -5.44, M('wood_dark'), 'clock_rim', 24)
+    rim.rotation_euler = (math.pi / 2, 0, 0); _apply(rim); reg(rim)
+    face = CYL(0.145, 0.012, -2.0, 2.2, -5.432, M('white'), 'clock_face', 24)
+    face.rotation_euler = (math.pi / 2, 0, 0); _apply(face); reg(face)
+    reg(B(0.01, 0.09, 0.008, -2.0, 2.23, -5.424, M('dark'), 'clock_h1', 0.002))
+    reg(B(0.06, 0.01, 0.008, -2.03, 2.2, -5.424, M('dark'), 'clock_h2', 0.002))
+    # 客厅茶几：书堆
+    for i, (bw, bd, rot) in enumerate([(0.24, 0.17, 0.06), (0.22, 0.16, -0.12), (0.2, 0.15, 0.2)]):
+        bk = B(bw, 0.035, bd, -5.68, 0.472 + i * 0.036, -1.82, M(f'book{(i * 2) % 7}'), f'bookstack{i}', 0.004)
+        bk.rotation_euler = (0, rot, 0); _apply(bk); reg(bk)
+    # 卧室床头柜：花瓶
+    reg(CYL(0.035, 0.1, -7.25, 0.58, 4.45, M('ceramic'), 'vase', 16))
+    reg(SPH(0.05, -7.25, 0.66, 4.45, M('flower1'), 'vase_fl', 12, 10))
+    # 主卧床头柜：闹钟
+    reg(B(0.12, 0.07, 0.05, -7.28, 3.715, 4.45, M('dark'), 'alarm', 0.008))
+    reg(B(0.09, 0.04, 0.008, -7.28, 3.72, 4.477, M('screen_pc'), 'alarm_face', 0.002))
 
 ROOMS = [
     {'id': 'living', 'minX': -7.5, 'maxX': 0, 'minZ': -5.5, 'maxZ': 0},
@@ -1068,8 +1145,9 @@ def build_upper_v():
         f = PLANE(x1 - x0, z1 - z0, (x0 + x1) / 2, F2 + 0.021, (z0 + z1) / 2,
                   M('floor2_wood'), f'u_floor_{name}', uv_scale=((x1 - x0) / 1.2, (z1 - z0) / 1.2))
         reg(f)
-    # 楼梯井北侧的层间封带（F1墙顶2.9与F2墙底3.15之间的外墙空隙，此处无楼板遮挡）
-    reg(B(2.0, 0.25, 0.24, 5.55, 3.025, -5.62, M('plaster_ext'), 'stairwell_band', 0.006))
+    # 楼梯井北侧的层间封带（F1墙顶2.9与F2墙底3.15之间的外墙空隙，
+    # 覆盖整个楼梯井洞口 x 2.9..6.5，否则上楼梯左手边能看到一条缝）
+    reg(B(3.75, 0.25, 0.24, 4.725, 3.025, -5.62, M('plaster_ext'), 'stairwell_band', 0.006))
     # 楼梯口平台补板
     reg(B(1.0, 0.25, 0.95, 7.0, F2 - 0.125, -5.02, M('slab'), 'u_slab_gate', 0.008))
     # 楼梯
@@ -1084,11 +1162,9 @@ def build_upper_v():
     hr = B(math.hypot(5.22, 3.15), 0.07, 0.07, 3.85, 2.72, -4.53, M('wood_dark'), 'handrail', 0.006)
     hr.rotation_euler = (0, -math.atan2(3.15, 5.22), 0)   # three rotation.z -> blender rotY 取负
     _apply(hr); reg(hr)
-    # 楼梯口护栏（西段 x 1.0..6.4 挡楼梯井；东段 6.4..7.5 留空作为进入二楼的出口）
-    reg(B(5.4, 0.9, 0.06, 3.7, F2 + 0.45, -4.53, M('wood_dark'), 'guard1', 0.006))
-    reg(B(5.4, 0.06, 0.07, 3.7, F2 + 0.9, -4.53, M('wood_dark'), 'guard2', 0.006))
-    reg(B(0.06, 0.9, 0.95, 1.07, F2 + 0.45, -5.02, M('wood_dark'), 'guard_post1', 0.006))
-    reg(B(0.06, 0.9, 0.95, 6.44, F2 + 0.45, -5.02, M('wood_dark'), 'guard_post2', 0.006))
+    # 楼梯井南侧实体墙（x 0.1..6.45，从二楼楼板到顶）——上楼梯到顶正对墙面，
+    # 同时挡住从储物间跌落楼梯井；东段 6.45..7.5 留空作为落地进入储物间的出口
+    wall_v('f2_stair_wall', 'x', -4.55, 0.1, 6.45, 0.1, M('plaster_int'), [], yBase=F2)
     # 坡屋顶
     ridgeY, eaveY = F2 + 2.9 + 2.15, F2 + 2.9
     EZ, EX = 6.35, 8.4

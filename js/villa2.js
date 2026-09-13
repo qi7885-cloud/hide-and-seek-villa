@@ -128,11 +128,9 @@ export function buildUpperFloor(scene, colliders) {
   }
   box(scene, colliders, 3.85, 2.72, -4.53, Math.hypot(5.22, 3.15), 0.07, 0.07, mat(0x8a6a45), { collide: false }).rotation.z = Math.atan2(3.15, 5.22); // 扶手斜梁（随坡度）
 
-  // ---- 二楼楼梯口护栏（纯装饰：开孔四周均为同高层地板或墙体，无坠落风险）----
-  box(scene, colliders, 1.07, F2 + 0.45, -5.02, 0.06, 0.9, 0.95, mat(0x8a6a45), { collide: false });
-  box(scene, colliders, 7.53, F2 + 0.45, -5.02, 0.06, 0.9, 0.95, mat(0x8a6a45), { collide: false });
-  box(scene, colliders, 4.25, F2 + 0.9, -4.53, 6.5, 0.06, 0.07, mat(0x8a6a45), { collide: false });
-  box(scene, colliders, 4.25, F2 + 0.45, -4.53, 6.5, 0.9, 0.06, mat(0x8a6a45), { collide: false });
+  // ---- 楼梯井南缘实体墙（GLB 提供视觉；碰撞在此生成）——
+  // 上楼到顶正对墙面，同时防止从储物间跌落楼梯井；东段 6.45..7.5 为落地出口 ----
+  wall(scene, colliders, { axis: 'x', at: -4.55, from: 0.1, to: 6.45, yBase: F2, thickness: 0.1, m: intMat });
 
   // ---- 坡屋顶（layer 2：院内/一楼视角可见，菜单俯瞰自动隐藏；GLB 模式由 Blender 提供）----
   if (VISUALS) {

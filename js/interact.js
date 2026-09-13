@@ -41,6 +41,18 @@ const OPENABLE_DEFS = {
   mailbox: [
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.12, 1.12, 0.2], axis: 'y', open: -1.9 },
   ],
+  shoeCabinet: [
+    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.43, 0.55, 0.175], axis: 'y', open: 1.9 },
+  ],
+  wallCabinet: [
+    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.47, 0.35, 0.165], axis: 'y', open: 1.9 },
+  ],
+  fileCabinet: [
+    { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.35 },
+  ],
+  pictureFrame3: [
+    { key: 'behind', part: 'tilt', kind: 'prop', axis: 'x', closed: -0.13, open: 0.55 },
+  ],
   carpetL: [
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.42, hinge: [0, 0, 0.9] },
   ],
