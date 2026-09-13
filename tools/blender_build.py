@@ -409,6 +409,15 @@ def TUBE(r_top, r_bot, h, x, y, z, mat, name='tube', seg=24):
     bpy.ops.object.modifier_apply(modifier='Solidify')
     return o
 
+def HOLLOW(w, h, d, x, y, z, mat, name, t=0.03):
+    """五面板拼成的空心盒（前口开放），中心(x,y,z) three 坐标。
+    用于衣柜/冰箱/吊柜等有 interior 藏点的家具：藏进去的物品开柜后可见。"""
+    reg(B(w - 2 * t, h, t, x, y, z - d / 2 + t / 2, mat, name + '_back', 0.004))
+    reg(B(t, h, d - 2 * t, x - w / 2 + t / 2, y, z, mat, name + '_left', 0.004))
+    reg(B(t, h, d - 2 * t, x + w / 2 - t / 2, y, z, mat, name + '_right', 0.004))
+    reg(B(w - 2 * t, t, d - 2 * t, x, y + h / 2 - t / 2, z, mat, name + '_top', 0.004))
+    reg(B(w - 2 * t, t, d - 2 * t, x, y - h / 2 + t / 2, z, mat, name + '_bottom', 0.004))
+
 def DISPLACED_SPH(r, x, y, z, mat, name, amp=0.16, seed=0):
     """有机形变球（树冠）"""
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r, location=T(x, y, z))
@@ -532,7 +541,9 @@ def b_armchair():
     reg(CYL(0.36, 0.07, 0, 0.36, 0, M('teddy_d'), 'cushion', 24))
 
 def b_counter():
-    reg(B(2.4, 0.82, 0.62, 0, 0.41, 0, M('wood_light'), 'body', 0.008))
+    # 空心柜身（柜门区可见内部）+ 抽屉真实箱体 + 台面含水槽龙头
+    HOLLOW(2.4, 0.82, 0.62, 0, 0.41, 0, M('wood_light'), 'ct_body', t=0.04)
+    reg(B(0.04, 0.74, 0.54, -0.175, 0.41, 0, M('wood_body'), 'ct_divider', 0.006))
     reg(B(2.44, 0.05, 0.66, 0, 0.875, 0, M('white'), 'top', 0.008))
     reg(B(0.52, 0.015, 0.42, -0.6, 0.883, 0, M('steel'), 'sink_rim', 0.004))
     reg(B(0.46, 0.05, 0.36, -0.6, 0.872, 0, M('steel_dark'), 'sink_in', 0.006))
@@ -553,12 +564,14 @@ def b_counter():
     reg(B(0.72, 0.5, 0.56, 0.25, 0.25, 0, M('wood_dark'), 'openbox', 0.006))
 
 def b_fridge():
-    reg(B(0.75, 1.78, 0.7, 0, 0.89, 0, M('fridge'), 'body', 0.012))
+    # 空心箱体 + 冷冻/冷藏隔板 + 内置玻璃层架（开门可见内部）
+    HOLLOW(0.75, 1.78, 0.7, 0, 0.89, 0, M('fridge'), 'fr_body', t=0.04)
+    reg(B(0.66, 0.03, 0.6, 0, 0.375, 0, M('steel_dark'), 'fr_divider', 0.006))
+    reg(B(0.71, 0.02, 0.62, 0, 0.9, 0.02, M('steel_dark'), 'fr_shelf', 0.004))
     reg(join([B(0.73, 1.74, 0.05, 0, 0.89, 0.35, M('fridge_door'), 'd', 0.01),
               B(0.04, 0.5, 0.04, -0.28, 1.1, 0.39, M('steel'), 'h1', 0.008),
               B(0.02, 0.3, 0.02, -0.28, 0.55, 0.39, M('steel'), 'h2', 0.006),
               B(0.73, 0.012, 0.052, 0, 1.15, 0.351, M('steel_dark'), 'seam', 0.003)], 'part_door'))
-    reg(B(0.71, 0.02, 0.62, 0, 0.9, 0.02, M('steel_dark'), 'shelf', 0.004))
 
 def b_dining_table():
     reg(CYL(0.09, 0.68, 0, 0.34, 0, M('wood_dark'), 'column', 24))
@@ -613,14 +626,28 @@ def b_nightstand():
               B(0.12, 0.03, 0.03, 0, 0.38, 0.225, M('dark'), 'h', 0.005)], 'part_drawer'))
 
 def b_wardrobe():
-    reg(B(1.2, 2.0, 0.6, 0, 1.0, 0, M('wood'), 'body', 0.01))
+    # 空心柜体（开门可见内部），挂衣区/顶隔板/叠放衣物/鞋子
+    HOLLOW(1.2, 2.0, 0.6, 0, 1.0, 0, M('wood'), 'wd_body', t=0.03)
     reg(join([B(0.55, 1.9, 0.03, -0.29, 1.0, 0.315, M('wood_light'), 'd', 0.008),
               B(0.03, 0.24, 0.03, -0.05, 1.0, 0.34, M('dark'), 'h')], 'part_doorL'))
     reg(join([B(0.55, 1.9, 0.03, 0.29, 1.0, 0.315, M('wood_light'), 'd', 0.008),
               B(0.03, 0.24, 0.03, 0.05, 1.0, 0.34, M('dark'), 'h')], 'part_doorR'))
     reg(B(1.1, 0.03, 0.5, 0, 1.7, 0, M('wood_dark'), 'topshelf', 0.006))
-    rod = CYL(0.015, 1.0, 0, 1.4, 0, M('steel'), 'rod', 14)
+    rod = CYL(0.015, 1.0, 0, 1.4, -0.18, M('steel'), 'rod', 14)
     rod.rotation_euler = (0, math.pi / 2, 0); _apply(rod); reg(rod)
+    # 挂着的衣服（钩子+衣身，颜色长短不一，贴背侧留出前方藏物空间）
+    for i, (gx, gw, gh, mname) in enumerate([(-0.35, 0.26, 0.72, 'velvet'), (-0.12, 0.28, 0.6, 'cream'),
+                                             (0.1, 0.24, 0.8, 'mailbox'), (0.33, 0.26, 0.66, 'shirt')]):
+        reg(TORUS(0.02, 0.004, gx, 1.42, -0.18, M('steel'), f'hook{i}', rot_bl=(0, math.pi / 2, 0)))
+        reg(B(gw, gh, 0.05, gx, 1.38 - gh / 2 - 0.02, -0.18, M(mname), f'cloth{i}', 0.03))
+    # 顶隔板上叠放的衣服
+    reg(B(0.38, 0.09, 0.3, -0.38, 1.755, -0.14, M('cream'), 'fold1', 0.02))
+    reg(B(0.34, 0.08, 0.28, -0.36, 1.84, -0.13, M('velvet'), 'fold2', 0.02))
+    reg(B(0.36, 0.1, 0.3, 0.4, 1.76, -0.14, M('mailbox'), 'fold3', 0.02))
+    reg(B(0.32, 0.08, 0.28, 0.38, 1.85, -0.13, M('cream_d'), 'fold4', 0.02))
+    # 柜底一双鞋
+    reg(B(0.09, 0.1, 0.24, -0.5, 0.08, -0.05, M('shirt'), 'shoeA', 0.02))
+    reg(B(0.09, 0.1, 0.24, -0.5, 0.08, 0.09, M('shirt'), 'shoeB', 0.02))
 
 def b_dresser():
     reg(B(0.9, 0.78, 0.45, 0, 0.42, 0, M('wood'), 'body', 0.008))
@@ -651,8 +678,13 @@ def b_office_chair():
     reg(B(0.44, 0.5, 0.06, 0, 0.7, -0.19, M('dark'), 'back', 0.025))
 
 def b_computer_case():
-    reg(B(0.2, 0.45, 0.45, 0, 0.225, 0, M('dark'), 'body', 0.008))
-    reg(B(0.012, 0.3, 0.02, 0.06, 0.3, 0.23, M('led'), 'power_led', 0.002))
+    # 空心机箱（侧板开门可见内部）+ 前面板/主板/风扇
+    HOLLOW(0.2, 0.45, 0.45, 0, 0.225, 0, M('dark'), 'pc_body', t=0.015)
+    reg(B(0.17, 0.42, 0.015, 0, 0.225, 0.213, M('dark'), 'pc_front', 0.004))
+    reg(B(0.012, 0.3, 0.02, 0.06, 0.3, 0.225, M('led'), 'power_led', 0.002))
+    reg(B(0.02, 0.3, 0.28, -0.055, 0.25, 0.0, M('pc_glass'), 'mobo', 0.004))
+    fan = CYL(0.06, 0.015, 0.04, 0.32, -0.17, M('steel_dark'), 'fan', 16)
+    fan.rotation_euler = (math.pi / 2, 0, 0); _apply(fan); reg(fan)
     reg(join([B(0.015, 0.4, 0.4, 0.1075, 0.23, 0, M('pc_glass'), 'p', 0.004),
               B(0.03, 0.02, 0.02, 0.11, 0.23, 0.19, M('dark'), 'h')], 'part_sidePanel'))
     reg(B(0.015, 0.4, 0.4, -0.1, 0.23, 0, M('dark'), 'sideL', 0.004))
@@ -703,8 +735,7 @@ def b_picture_frame():
     reg(fr)
 
 def b_chest():
-    reg(B(0.62, 0.36, 0.42, 0, 0.18, 0, M('wood'), 'body', 0.008))
-    reg(B(0.56, 0.02, 0.36, 0, 0.06, 0, M('wood_dark'), 'inner_bottom', 0.004))
+    HOLLOW(0.62, 0.36, 0.42, 0, 0.18, 0, M('wood'), 'chest_body', t=0.025)
     reg(join([B(0.64, 0.05, 0.44, 0, 0.385, 0, M('wood_light'), 'l', 0.008),
               B(0.1, 0.03, 0.03, 0, 0.37, 0.22, M('dark'), 'h', 0.005)], 'part_lid'))
 
@@ -715,9 +746,12 @@ def b_shelf_unit():
         reg(B(0.92, 0.045, 0.32, 0, y, 0, M('wood'), f'shelf{i}', 0.006))
 
 def b_crate():
-    reg(B(0.5, 0.42, 0.5, 0, 0.21, 0, M('card'), 'body', 0.008))
-    reg(B(0.42, 0.02, 0.42, 0, 0.05, 0, M('card_band'), 'inner', 0.004))
-    reg(B(0.52, 0.04, 0.1, 0, 0.28, 0, M('card_band'), 'tape', 0.006))
+    # 开口纸箱：四壁+底（顶部翻盖），内部可藏
+    reg(B(0.5, 0.42, 0.02, 0, 0.21, -0.24, M('card'), 'wall_back', 0.006))
+    reg(B(0.5, 0.42, 0.02, 0, 0.21, 0.24, M('card'), 'wall_front', 0.006))
+    reg(B(0.02, 0.42, 0.46, -0.24, 0.21, 0, M('card'), 'wall_left', 0.006))
+    reg(B(0.02, 0.42, 0.46, 0.24, 0.21, 0, M('card'), 'wall_right', 0.006))
+    reg(B(0.46, 0.02, 0.46, 0, 0.01, 0, M('card_band'), 'bottom', 0.004))
     for i, (rx, ry, px, py) in enumerate([(-0.28, 0, 0, -0.27), (0.28, 0, 0, 0.27),
                                           (0, 0.28, -0.27, 0), (0, -0.28, 0.27, 0)]):
         flap = B(0.24, 0.015, 0.46 if rx else 0.24, px, 0.425, py, M('card'), f'flap{i}', 0.004)
@@ -734,7 +768,7 @@ def b_bench():
 
 def b_mailbox():
     reg(CYL(0.05, 1.0, 0, 0.5, 0, M('wood_dark'), 'post', 16))
-    reg(B(0.26, 0.24, 0.4, 0, 1.12, 0, M('mailbox'), 'body', 0.012))
+    HOLLOW(0.26, 0.24, 0.4, 0, 1.12, 0, M('mailbox'), 'mb_body', t=0.015)
     reg(join([B(0.24, 0.2, 0.03, 0, 1.12, 0.2, M('mailbox_d'), 'd', 0.008),
               B(0.03, 0.06, 0.03, 0.08, 1.12, 0.225, M('dark'), 'h', 0.005)], 'part_door'))
 
@@ -751,9 +785,15 @@ def b_flowerbed():
 
 # ---- M15 新增家具 ----
 def b_shoe_cabinet():
-    reg(B(0.9, 1.1, 0.35, 0, 0.55, 0, M('wood_light'), 'body', 0.008))
+    # 空心柜体 + 中隔板 + 几双鞋
+    HOLLOW(0.9, 1.1, 0.35, 0, 0.55, 0, M('wood_light'), 'shoe_body', t=0.02)
+    reg(B(0.82, 0.02, 0.27, 0, 0.42, 0, M('wood_dark'), 'shoe_shelf', 0.004))
     reg(join([B(0.86, 1.04, 0.03, 0, 0.55, 0.175, M('wood'), 'd', 0.006),
               B(0.03, 0.12, 0.025, 0.3, 0.55, 0.2, M('dark'), 'h', 0.004)], 'part_door'))
+    for i, (sx, mname, rot) in enumerate([(-0.36, 'shirt', 0.06), (-0.27, 'dark', -0.04),
+                                          (0.24, 'mailbox', 0.03), (0.34, 'eraser', -0.05)]):
+        s = B(0.09, 0.07, 0.2, sx, 0.055, 0.02, M(mname), f'shoe{i}', 0.015)
+        s.rotation_euler = (0, rot, 0); _apply(s); reg(s)
 
 def b_side_table():
     reg(CYL(0.24, 0.04, 0, 0.42, 0, M('wood'), 'top', 24))
@@ -763,9 +803,22 @@ def b_side_table():
     reg(CYL(0.19, 0.015, 0, 0.14, 0, M('wood'), 'shelf', 20))
 
 def b_wall_cabinet():
-    reg(B(1.0, 0.7, 0.33, 0, 0.35, 0, M('white'), 'body', 0.008))
+    # 空心柜体 + 中层隔板（上下两层）+ 两层调料
+    HOLLOW(1.0, 0.7, 0.33, 0, 0.35, 0, M('white'), 'cab_body', t=0.02)
+    reg(B(0.92, 0.02, 0.3, 0, 0.33, 0, M('wood_light'), 'cab_shelf', 0.004))
     reg(join([B(0.94, 0.64, 0.028, 0, 0.35, 0.165, M('wood_light'), 'd', 0.006),
               B(0.1, 0.025, 0.025, 0.08, 0.35, 0.19, M('dark'), 'h', 0.004)], 'part_door'))
+    # 下层调料（靠背板，前区留给藏匿物品）
+    reg(CYL(0.032, 0.2, -0.3, 0.12, -0.12, M('dark'), 'soy', 14))
+    reg(CYL(0.015, 0.02, -0.3, 0.23, -0.12, M('dark'), 'soy_cap', 10))
+    reg(CYL(0.03, 0.18, -0.22, 0.11, -0.12, M('gold'), 'oil', 14))
+    reg(CYL(0.045, 0.08, 0.28, 0.06, -0.12, M('fruit2'), 'jar', 14))
+    reg(CYL(0.047, 0.015, 0.28, 0.105, -0.12, M('gold'), 'jar_lid', 14))
+    # 上层调料
+    reg(B(0.06, 0.09, 0.05, -0.25, 0.385, -0.12, M('paper'), 'salt', 0.006))
+    reg(CYL(0.035, 0.1, 0.05, 0.39, -0.12, M('bowl_d'), 'spice', 12))
+    reg(CYL(0.037, 0.012, 0.05, 0.446, -0.12, M('wood_dark'), 'spice_lid', 12))
+    reg(CYL(0.03, 0.16, 0.3, 0.42, -0.12, M('gold'), 'oil2', 14))
 
 def b_file_cabinet():
     reg(B(0.45, 0.6, 0.45, 0, 0.3, 0, M('wood_dark'), 'body', 0.008))
@@ -780,8 +833,13 @@ def b_bean_bag():
     reg(SPH(0.09, 0, 0.6, 0, M('teddy_d'), 'knot', 12, 10))
 
 def b_backpack():
-    reg(B(0.28, 0.36, 0.14, 0, 0.18, 0, M('shirt'), 'body', 0.03))
-    reg(B(0.2, 0.14, 0.06, 0, 0.12, 0.09, M('mailbox'), 'pocket', 0.02))
+    # 开口书包：四壁+底（顶部开口），内部可藏
+    reg(B(0.28, 0.36, 0.02, 0, 0.18, -0.06, M('shirt'), 'bp_back', 0.03))
+    reg(B(0.28, 0.36, 0.02, 0, 0.18, 0.06, M('shirt'), 'bp_front', 0.03))
+    reg(B(0.02, 0.36, 0.14, -0.13, 0.18, 0, M('shirt'), 'bp_left', 0.02))
+    reg(B(0.02, 0.36, 0.14, 0.13, 0.18, 0, M('shirt'), 'bp_right', 0.02))
+    reg(B(0.24, 0.02, 0.1, 0, 0.01, 0, M('shirt'), 'bp_bottom', 0.006))
+    reg(B(0.2, 0.14, 0.03, 0, 0.12, 0.085, M('mailbox'), 'pocket', 0.02))
     reg(B(0.05, 0.3, 0.02, -0.08, 0.2, -0.08, M('dark'), 'strapL', 0.008))
     reg(B(0.05, 0.3, 0.02, 0.08, 0.2, -0.08, M('dark'), 'strapR', 0.008))
     reg(CYL(0.05, 0.03, 0, 0.375, 0, M('dark'), 'handle', 12))

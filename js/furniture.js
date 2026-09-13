@@ -533,7 +533,7 @@ export const CATALOG = [
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
   { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-3.5, 0, -0.8], rotY: 0, build: floorLamp, slots: [] },
   { id: 'shoeCabinet', name: '鞋柜', room: 'living', pos: [-7.3, 0, -0.8], rotY: Math.PI / 2, build: shoeCabinet,
-    slots: [{ key: 'inner', type: 'interior', name: '鞋柜里', cap: [0.7, 0.95, 0.24], offset: [0, 0.55, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '鞋柜里', cap: [0.44, 0.95, 0.24], offset: [0, 0.505, 0] }] },
   { id: 'sideTable', name: '边几', room: 'living', pos: [-4.1, 0, -0.5], rotY: 0, build: sideTable,
     slots: [{ key: 'top', type: 'top', name: '几面上', cap: [0.34, 0.18, 0.34], offset: [0, 0.46, 0] }] },
   { id: 'armchair', name: '休闲椅', room: 'living', pos: [-0.85, 0, -1.05], rotY: Math.PI / 2 + 0.5, build: armchair, slots: [] },
@@ -547,8 +547,8 @@ export const CATALOG = [
     ] },
   { id: 'fridge', name: '冰箱', room: 'kitchen', pos: [7.06, 0, -0.5], rotY: -Math.PI / 2, build: fridge,
     slots: [
-      { key: 'inner', type: 'interior', name: '冷藏室', cap: [0.5, 1.1, 0.4], offset: [0, 0.85, 0] },
-      { key: 'freezer', type: 'interior', name: '冷冻室', cap: [0.5, 0.2, 0.4], offset: [0, 0.22, 0] },
+      { key: 'inner', type: 'interior', name: '冷藏室', cap: [0.5, 0.78, 0.4], offset: [0, 0.79, 0] },
+      { key: 'freezer', type: 'interior', name: '冷冻室', cap: [0.5, 0.2, 0.4], offset: [0, 0.15, 0] },
     ] },
   { id: 'diningTable', name: '餐桌', room: 'kitchen', pos: [3.4, 0, -2.3], rotY: 0, build: diningTable,
     slots: [{ key: 'top', type: 'top', name: '桌面上', cap: [1.2, 0.25, 0.7], offset: [0, 0.79, 0] }] },
@@ -564,7 +564,7 @@ export const CATALOG = [
   { id: 'trashBin', name: '垃圾桶', room: 'kitchen', pos: [5.8, 0, -0.6], rotY: 0, build: trashBin,
     slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.24, 0.32, 0.24], offset: [0, 0.228, 0] }] },
   { id: 'wallCabinet', name: '吊柜', room: 'kitchen', pos: [7.28, 1.2, -4.0], rotY: -Math.PI / 2, build: wallCabinet,
-    slots: [{ key: 'inner', type: 'interior', name: '吊柜里', cap: [0.8, 0.56, 0.2], offset: [0, 0.35, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '吊柜里', cap: [0.8, 0.56, 0.16], offset: [0, 0.31, 0] }] },
 
   // —— 卧室 ——
   { id: 'bed', name: '床', room: 'bedroom', pos: [-6.39, 0, 3.2], rotY: Math.PI / 2, build: bed,
@@ -573,8 +573,8 @@ export const CATALOG = [
     slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.38, 0] }] },
   { id: 'wardrobe', name: '衣柜', room: 'bedroom', pos: [-1.5, 0, 5.06], rotY: Math.PI, build: wardrobe,
     slots: [
-      { key: 'hang', type: 'interior', name: '挂衣区', cap: [0.9, 1.35, 0.4], offset: [0, 1.05, 0] },
-      { key: 'topShelf', type: 'interior', name: '顶隔板上', cap: [0.9, 0.25, 0.4], offset: [0, 1.72, 0] },
+      { key: 'hang', type: 'interior', name: '挂衣区', cap: [0.9, 1.35, 0.24], offset: [0, 0.715, 0] },
+      { key: 'topShelf', type: 'interior', name: '顶隔板上', cap: [0.6, 0.25, 0.2], offset: [0, 1.845, 0] },
     ] },
   { id: 'dresser', name: '斗柜', room: 'bedroom', pos: [-2.2, 0, 0.33], rotY: 0, build: dresser,
     slots: [
@@ -598,7 +598,7 @@ export const CATALOG = [
   { id: 'rug2', name: '地毯', room: 'study', pos: [3.75, 0, 4.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
   { id: 'computerCase', name: '电脑主机', room: 'study', pos: [4.75, 0, 5.0], rotY: Math.PI, build: computerCase,
-    slots: [{ key: 'inner', type: 'interior', name: '机箱内', cap: [0.13, 0.3, 0.32], offset: [0, 0.23, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '机箱内', cap: [0.13, 0.3, 0.32], offset: [0, 0.175, 0] }] },
   { id: 'monitor', name: '显示器', room: 'study', pos: [3.6, 0.76, 5.2], rotY: Math.PI, build: monitor, collide: false, slots: [] },
   { id: 'bookshelf', name: '书架', room: 'study', pos: [7.28, 0, 1.4], rotY: -Math.PI / 2, build: bookshelf,
     slots: [
@@ -639,9 +639,9 @@ export const CATALOG = [
       { key: 'top', type: 'top', name: '顶板上', cap: [0.8, 0.25, 0.26], offset: [0, 1.82, 0] },
     ] },
   { id: 'crate1', name: '纸箱', room: 'storage', pos: [3.6, 3.15, -1.2], rotY: 0.3, build: crate,
-    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.2, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.18, 0] }] },
   { id: 'crate2', name: '纸箱', room: 'storage', pos: [2.6, 3.15, -2.6], rotY: -0.4, build: crate,
-    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.2, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.18, 0] }] },
   { id: 'bucket', name: '水桶', room: 'storage', pos: [1.6, 3.15, -1.2], rotY: 0.3, build: bucket,
     slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.26, 0.26, 0.26], offset: [0, 0.17, 0] }] },
 
@@ -650,8 +650,8 @@ export const CATALOG = [
     slots: [{ key: 'under', type: 'under', name: '床底下', cap: [1.3, 0.14, 1.7], offset: [0, 0.09, 0.1] }] },
   { id: 'wardrobe2', name: '衣柜', room: 'master', pos: [-1.5, 3.15, 5.06], rotY: Math.PI, build: wardrobe,
     slots: [
-      { key: 'hang', type: 'interior', name: '挂衣区', cap: [0.9, 1.35, 0.4], offset: [0, 1.05, 0] },
-      { key: 'topShelf', type: 'interior', name: '顶隔板上', cap: [0.9, 0.25, 0.4], offset: [0, 1.72, 0] },
+      { key: 'hang', type: 'interior', name: '挂衣区', cap: [0.9, 1.35, 0.24], offset: [0, 0.715, 0] },
+      { key: 'topShelf', type: 'interior', name: '顶隔板上', cap: [0.6, 0.25, 0.2], offset: [0, 1.845, 0] },
     ] },
   { id: 'dresser2', name: '斗柜', room: 'master', pos: [-2.2, 3.15, 0.33], rotY: 0, build: dresser,
     slots: [
@@ -666,14 +666,14 @@ export const CATALOG = [
   { id: 'bedKids', name: '儿童床', room: 'kids', pos: [6.4, 3.15, 3.9], rotY: -Math.PI / 2, build: bed,
     slots: [{ key: 'under', type: 'under', name: '床底下', cap: [1.3, 0.14, 1.7], offset: [0, 0.09, 0.1] }] },
   { id: 'toyChest', name: '玩具箱', room: 'kids', pos: [3.0, 3.15, 4.9], rotY: Math.PI, build: chest,
-    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.52, 0.28, 0.34], offset: [0, 0.1, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.52, 0.28, 0.34], offset: [0, 0.175, 0] }] },
   { id: 'desk2', name: '小书桌', room: 'kids', pos: [1.4, 3.15, 0.45], rotY: 0, build: desk,
     slots: [
       { key: 'top', type: 'top', name: '桌面上', cap: [1.1, 0.2, 0.45], offset: [0, 0.79, 0.02] },
       { key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.4, 0.08, 0.36], offset: [0.35, 0.63, 0] },
     ] },
   { id: 'backpack', name: '书包', room: 'kids', pos: [4.8, 3.15, 2.8], rotY: 0.5, build: backpack,
-    slots: [{ key: 'inner', type: 'interior', name: '书包里', cap: [0.22, 0.28, 0.1], offset: [0, 0.22, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '书包里', cap: [0.22, 0.28, 0.1], offset: [0, 0.17, 0] }] },
   { id: 'plant3', name: '盆栽', room: 'kids', pos: [1.5, 3.15, 4.8], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
 
@@ -681,7 +681,7 @@ export const CATALOG = [
   { id: 'bench', name: '长椅', room: 'yard', pos: [4.5, 0, 6.6], rotY: Math.PI, build: bench,
     slots: [{ key: 'under', type: 'under', name: '椅面下', cap: [1.2, 0.16, 0.4], offset: [0, 0.2, 0] }] },
   { id: 'mailbox', name: '信箱', room: 'yard', pos: [-1.6, 0, 7.7], rotY: Math.PI, build: mailbox,
-    slots: [{ key: 'inner', type: 'interior', name: '信箱里', cap: [0.16, 0.12, 0.28], offset: [0, 1.12, 0] }] },
+    slots: [{ key: 'inner', type: 'interior', name: '信箱里', cap: [0.16, 0.12, 0.28], offset: [0, 1.085, 0] }] },
   { id: 'flowerbed', name: '花坛', room: 'yard', pos: [5.5, 0, 6.9], rotY: 0, build: flowerbed,
     slots: [{ key: 'soil', type: 'soil', name: '花坛土里', cap: [1.4, 0.06, 0.6], offset: [0, 0.26, 0] }] },
   { id: 'planter', name: '大花盆', room: 'yard', pos: [7.6, 0, 6.5], rotY: 0, build: planter,
