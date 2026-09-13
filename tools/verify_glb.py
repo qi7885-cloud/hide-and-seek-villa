@@ -44,7 +44,8 @@ for fn in sorted(os.listdir(PIECES)):
     gj = glb_json(path)
     if gj is None:
         print(f'[BAD] {fn}: not GLB'); ok = False; continue
-    nodes = [re.sub(r'\.\d+$', '', n.get('name', '')) for n in gj.get('nodes', [])]
+    nodes = [re.sub(r'\.\d+$', '', n.get('name', '')).split('__')[0]
+             for n in gj.get('nodes', [])]
     parts = [n for n in nodes if n.startswith('part_')]
     mats = len(gj.get('materials', []))
     meshes = len(gj.get('meshes', []))
