@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）— 你藏我找 · 别墅版
 
 > 给下一个 AI 会话/开发者：读完本文即可在现有基础上继续优化，无需重新探索。
-> 最后更新：2026-09-14（M15 + 发布上线后）
+> 最后更新：2026-09-14（M19 后）
 
 ## 1. 项目位置与链接
 
@@ -45,9 +45,18 @@
 | `spectator.js` | 上帝相机/替身/画中画 | 替身仅在 layer 1（画中画层），PiP 关闭时不可见 |
 | `audio.js` | WebAudio 合成音效 | 无音频文件 |
 
+### 家具建模三助手（tools/blender_build.py，M16~M19 沉淀）
+- `HOLLOW(w,h,d,x,y,z,mat,name,t)`：五面板空心盒，**前口(+z)开放**——衣柜/冰箱/吊柜/鞋柜/橱柜/机箱等有 interior 藏点的家具必须用它，否则藏的物品被实心体包住看不见。
+- `HOLLOW_TOP(w,h,d,x,y,z,mat,name,t)`：顶口开放（背/左/右/前/底）——玩具箱等顶开盖家具，四面齐全。
+- `DRAWER_BOX(w,h,d,x,y,z,front_z,mat_front,mat_body,name,t,handle_mat)`：空心抽屉（前板+底+左右+后，顶口开放），**把手参数内建并 join 进同一部件**——抽屉滑出时把手才跟随；所有抽屉（床头柜/斗柜/书桌/文件柜/橱柜）都用它。
+- **interior 槽位校准法**：物品落于 cap 底（`offset - cap/2`），所以 `offset = 腔体内底高度 + cap/2`；cap 的 x/z 不要大于腔体内空（否则大物品穿板）。改完抽屉/柜体尺寸必须重算 offset。
+- **门方向规则**（three 绕 Y 正旋转：+x→-z）：门板在 +z 面、铰链在左缘(-x) → `open` 取**负**（向外开）；铰链在右缘(+x) → 取正。把手一律装在自由缘（铰链对侧）。counter/mailbox 原本就对，tvCabinet/fridge/wardrobe/shoeCabinet/wallCabinet 曾写反。
+- **slide 动画物品跟随**：抽屉滑出时藏在里面的物品按"局部轴位移→世界位移"（父节点四元数换算）同步平移，基准存在 `mesh.userData._restPos`（placeItem 时记录）。改抽屉滑动量不用改物品逻辑。
+
 ### 藏匿/开合系统关键约定
 - CATALOG 条目：`pos/rotY`（组原点=家具底部中心，正面朝局部 +z）、`slots[]`（`offset` 是组局部坐标）、`build`（回退用）。
-- 新增可开合家具四步：① Blender `b_xxx()` 建模（可动部件用 `join([...], 'part_名字')` 注册）→ ② `PIECE_BUILDERS` 加映射 → ③ `furniture.js` CATALOG 加条目+回退 builder → ④ `models.js` `PIECE_MODEL` 加映射 + `interact.js` `OPENABLE_DEFS` 加开合定义。
+- 新增可开合家具五步：① Blender `b_xxx()` 建模（可动部件 `join([...], 'part_名字')`，把手等小件**必须并进部件**）→ ② `PIECE_BUILDERS` 加映射 → ③ `furniture.js` CATALOG 加条目+回退 builder → ④ `models.js` `PIECE_MODEL` 加映射 → ⑤ `interact.js` `OPENABLE_DEFS` 加开合定义。
+- ⚠️ **同一 builder 多实例（如 desk/desk2）各有独立 id，OPENABLE_DEFS 按 pieceId 查表——每个 id 都要有条目**。desk2/wardrobe2/nightstand2/dresser2/bookshelf2 曾因缺条目而从第一版起就打不开（M17 修复）。
 
 ## 4. Blender 建模管线（tools/）
 
@@ -67,9 +76,13 @@
 - M1-M9：工程骨架/别墅/家具库/藏匿系统/回合/音效/真实化材质
 - M10-M12：二楼+楼梯+屋顶+庭院；楼梯口头部空间修复
 - M13：**全量 Blender 建模升级**（GLTFLoader 本地化、碰撞零改动）
-- M14：十项体验修复（指针锁定时代的：拖动视角、新藏匿流程、自定义件数、联动开合、书脊 Vol.N 书名/动态选书/抽书藏入放回、吊顶楼梯井、挡水板避窗、沙发防共面闪烁）
-- M15：楼梯区完善（层间封带消缝、楼梯顶实体墙）+ 家具扩到 60 件（鞋柜/边几/吊柜/文件柜/懒人沙发/书包/水桶/大花盆）+ 装饰小物
-- 后续微调：下蹲功能移除；退出改回 **Esc + 指针锁定**（撤销了 M14 的拖动视角）；取消找家画中画；面板文案/尺寸显示简化；菜单"自定义"下拉输入；**发布上线**
+- M14：十项体验修复（拖动视角、新藏匿流程、自定义件数、联动开合、书脊书名/动态选书、吊顶楼梯井、挡水板避窗、沙发防共面闪烁）
+- M15：楼梯区完善 + 家具扩到 60 件（鞋柜/边几/吊柜/文件柜/懒人沙发/书包/水桶/大花盆）+ 装饰小物
+- M16：**家具内部掏空**（HOLLOW 空心盒×10 件）+ 衣柜挂衣服/吊柜两层调料 + interior 槽位全面校准
+- M17：门开合方向全面修正（从把手侧向外开）+ 楼梯扶手立柱精确接触 + 补齐二楼家具缺失开合定义
+- M18：抽屉空心化（DRAWER_BOX）+ 物品跟随抽屉滑出 + 电视柜两层 + 玩具箱四面补板 + 吊柜门方向补修
+- M19：抽屉把手并入抽屉对象（随滑出移动）
+- 后续微调：下蹲移除；退出改回 **Esc + 指针锁定**；取消找家画中画；菜单"自定义"下拉；**发布上线（GitHub + Netlify）**
 
 ## 6. 当前玩法操作（写死在 UI 文案里，改功能要同步改文案）
 
@@ -99,7 +112,11 @@
 
 1. Blender 对象名全局去重 → 部件必须走 `join()` 的 `__桶名` 机制，裸 `part_door` 第二次出现会被静默改名导致游戏端动画失联。
 2. glTF 导出器会把名字里的点号去掉（`doorL.001`→`doorL001`），校验脚本和 models.js 都做了 `.split('__')[0]` + `re.sub(r'\.\d+$','')` 归一。
-3. 改 villa 视觉（Blender 脚本）必须同步 `villa.js/villa2.js` 的碰撞体，反之亦然——两边是刻意分离的（视觉/碰撞）。
-4. `models.js` 的 `NO_CAST`/`ROOF_LAYER` 正则按对象名前缀匹配，新增大件（楼板/屋顶类）要记得加进去，否则菜单俯瞰会露馅/阴影发脏。
-5. 浏览器对 JS/GLB 缓存很顽固：本地调试直接 `tab.reload()`；线上靠 netlify.toml 的 no-cache(index)+hash 化部署。
-6. 8080 端口常有上次会话遗留的 server 进程，`curl http://127.0.0.1:8080/` 先探测再决定是否启动。
+3. **抽屉/门的小件（把手）必须 join 进部件对象**——独立节点不会跟随开合动画（M19）。
+4. **有 interior 藏点的家具必须空心**（HOLLOW/HOLLOW_TOP/DRAWER_BOX），实心体会把藏的物品包住；槽位 offset 按"物品落 cap 底"校准，否则物品悬空或穿板（M16/M18）。
+5. **开合方向符号**：铰链左缘→open 负、右缘→open 正（见第 3 节规则）；写反了门就往里翻（M17）。
+6. 改 villa 视觉（Blender 脚本）必须同步 `villa.js/villa2.js` 的碰撞体，反之亦然——两边是刻意分离的（视觉/碰撞）。
+7. `models.js` 的 `NO_CAST`/`ROOF_LAYER` 正则按对象名前缀匹配，新增大件（楼板/屋顶类）要记得加进去，否则菜单俯瞰会露馅/阴影发脏。
+8. 浏览器对 JS/GLB 缓存很顽固：本地调试直接 `tab.reload()`；线上靠 netlify.toml 的 no-cache(index)+hash 化部署。
+9. 8080 端口常有上次会话遗留的 server 进程，`curl http://127.0.0.1:8080/` 先探测再决定是否启动。
+10. **调试相机**：HIDE 阶段用 godCam 截视角前必须 `g.player.frozen = true`，否则玩家控制器每帧把相机拉回第一人称。
