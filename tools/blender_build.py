@@ -418,6 +418,24 @@ def HOLLOW(w, h, d, x, y, z, mat, name, t=0.03):
     reg(B(w - 2 * t, t, d - 2 * t, x, y + h / 2 - t / 2, z, mat, name + '_top', 0.004))
     reg(B(w - 2 * t, t, d - 2 * t, x, y - h / 2 + t / 2, z, mat, name + '_bottom', 0.004))
 
+def HOLLOW_TOP(w, h, d, x, y, z, mat, name, t=0.025):
+    """五面板空心盒（顶口开放）：背/左/右/前/底——用于玩具箱等顶开盖家具。"""
+    reg(B(w - 2 * t, h, t, x, y, z - d / 2 + t / 2, mat, name + '_back', 0.004))
+    reg(B(t, h, d - 2 * t, x - w / 2 + t / 2, y, z, mat, name + '_left', 0.004))
+    reg(B(t, h, d - 2 * t, x + w / 2 - t / 2, y, z, mat, name + '_right', 0.004))
+    reg(B(w - 2 * t, h, t, x, y, z + d / 2 - t / 2, mat, name + '_front', 0.004))
+    reg(B(w - 2 * t, t, d - 2 * t, x, y - h / 2 + t / 2, z, mat, name + '_bottom', 0.004))
+
+def DRAWER_BOX(w, h, d, x, y, z, front_z, mat_front, mat_body, name, t=0.02):
+    """空心抽屉（顶口开放）：外观前板(位于 front_z) + 底/左右/后板，中心(x,y,z)。
+    实心抽屉会让藏进去的物品不可见，故所有抽屉都用本结构。五面板 join 为单一 part 对象。"""
+    front = B(w + 0.05, h + 0.04, 0.028, x, y, front_z, mat_front, name + '_front', 0.005)
+    bottom = B(w - 0.04, t, d - 0.06, x, y - h / 2 + t / 2, z, mat_body, name + '_bottom', 0.004)
+    left = B(t, h - 0.04, d - 0.06, x - w / 2 + t / 2, y, z, mat_body, name + '_left', 0.004)
+    right = B(t, h - 0.04, d - 0.06, x + w / 2 - t / 2, y, z, mat_body, name + '_right', 0.004)
+    back = B(w - 0.04, h - 0.04, t, x, y, z - d / 2 + t / 2, mat_body, name + '_back', 0.004)
+    reg(join([front, bottom, left, right, back], name))
+
 def DISPLACED_SPH(r, x, y, z, mat, name, amp=0.16, seed=0):
     """有机形变球（树冠）"""
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r, location=T(x, y, z))
@@ -499,7 +517,9 @@ def b_coffee_table():
     reg(B(0.95, 0.03, 0.45, 0, 0.14, 0, M('wood'), 'shelf', bevel=0.008))
 
 def b_tv_cabinet():
-    reg(B(1.6, 0.44, 0.42, 0, 0.28, 0, M('wood'), 'body', bevel=0.008))
+    # 空心柜体 + 中层隔板（上下两层，与吊柜一致）
+    HOLLOW(1.6, 0.44, 0.42, 0, 0.28, 0, M('wood'), 'tv_body', t=0.02)
+    reg(B(1.5, 0.02, 0.34, 0, 0.28, 0, M('wood_dark'), 'tv_shelf', 0.004))
     reg(B(1.56, 0.03, 0.40, 0, 0.505, 0, M('wood_dark'), 'toptrim', 0.006))
     reg(join([B(0.72, 0.36, 0.03, -0.4, 0.28, 0.215, M('wood_light'), 'd', 0.006),
               B(0.1, 0.025, 0.025, -0.08, 0.28, 0.245, M('dark'), 'h')], 'part_doorL'))
@@ -550,15 +570,10 @@ def b_counter():
     reg(CYL(0.02, 0.24, -0.6, 1.0, -0.22, M('steel'), 'faucet', 16))
     sp = CYL(0.015, 0.16, -0.6, 1.11, -0.15, M('steel'), 'spout', 14)
     sp.rotation_euler = (math.pi / 2, 0, 0); _apply(sp); reg(sp)
-    # 抽屉×2（真实箱体：面板+底+侧+后）
+    # 抽屉×2（空心，滑出可见内部）
     for i, dx in enumerate((-0.6, 0.25)):
-        parts = [B(0.72, 0.2, 0.035, dx, 0.68, 0.283, M('wood'), 'f', 0.006),
-                 B(0.67, 0.02, 0.5, dx, 0.59, 0.0, M('wood_body'), 'b', 0.004),
-                 B(0.02, 0.15, 0.5, dx - 0.325, 0.665, 0.0, M('wood_body'), 'l', 0.004),
-                 B(0.02, 0.15, 0.5, dx + 0.325, 0.665, 0.0, M('wood_body'), 'r', 0.004),
-                 B(0.67, 0.15, 0.02, dx, 0.665, -0.24, M('wood_body'), 'k', 0.004),
-                 B(0.2, 0.025, 0.025, dx, 0.68, 0.31, M('dark'), 'h', 0.005)]
-        reg(join(parts, f'part_drawer{i+1}'))
+        DRAWER_BOX(0.67, 0.15, 0.5, dx, 0.665, 0.0, 0.283, M('wood'), M('wood_body'), f'part_drawer{i+1}')
+        reg(B(0.2, 0.025, 0.025, dx, 0.68, 0.31, M('dark'), f'handle{i+1}', 0.005))
     reg(join([B(0.72, 0.5, 0.03, -0.6, 0.25, 0.315, M('wood'), 'd', 0.006),
               B(0.12, 0.025, 0.025, -0.6, 0.25, 0.34, M('dark'), 'h')], 'part_cabDoor'))
     reg(B(0.72, 0.5, 0.56, 0.25, 0.25, 0, M('wood_dark'), 'openbox', 0.006))
@@ -621,9 +636,8 @@ def b_bed():
 
 def b_nightstand():
     reg(B(0.45, 0.5, 0.4, 0, 0.28, 0, M('wood'), 'body', 0.008))
-    reg(join([B(0.4, 0.16, 0.03, 0, 0.38, 0.2, M('wood_light'), 'f', 0.006),
-              B(0.36, 0.13, 0.3, 0, 0.38, 0.02, M('wood_body'), 'b', 0.004),
-              B(0.12, 0.03, 0.03, 0, 0.38, 0.225, M('dark'), 'h', 0.005)], 'part_drawer'))
+    DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.38, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer')
+    reg(B(0.12, 0.03, 0.03, 0, 0.38, 0.225, M('dark'), 'handle', 0.005))
 
 def b_wardrobe():
     # 空心柜体（开门可见内部），挂衣区/顶隔板/叠放衣物/鞋子
@@ -655,17 +669,15 @@ def b_dresser():
         for sz in (-1, 1):
             reg(B(0.05, 0.06, 0.05, sx * 0.4, 0.03, sz * 0.19, M('wood_dark'), f'leg{sx}{sz}', 0.006))
     for i, dy in enumerate((0.58, 0.3)):
-        reg(join([B(0.84, 0.26, 0.03, 0, dy, 0.222, M('wood_light'), 'f', 0.006),
-                  B(0.78, 0.21, 0.34, 0, dy, 0.02, M('wood_body'), 'b', 0.004),
-                  B(0.16, 0.03, 0.03, 0, dy, 0.245, M('dark'), 'h', 0.005)], f'part_drawer{i+1}'))
+        DRAWER_BOX(0.78, 0.21, 0.34, 0, dy, 0.02, 0.222, M('wood_light'), M('wood_body'), f'part_drawer{i+1}')
+        reg(B(0.16, 0.03, 0.03, 0, dy, 0.245, M('dark'), f'handle{i+1}', 0.005))
 
 def b_desk():
     reg(B(1.4, 0.05, 0.7, 0, 0.735, 0, M('wood'), 'top', 0.01))
     reg(B(0.05, 0.7, 0.65, -0.66, 0.36, 0, M('wood_dark'), 'sideL', 0.008))
     reg(B(0.05, 0.7, 0.65, 0.66, 0.36, 0, M('wood_dark'), 'sideR', 0.008))
-    reg(join([B(0.5, 0.12, 0.03, 0.35, 0.63, 0.3, M('wood_light'), 'f', 0.006),
-              B(0.45, 0.09, 0.44, 0.35, 0.63, 0.05, M('wood_body'), 'b', 0.004),
-              B(0.14, 0.03, 0.03, 0.35, 0.63, 0.325, M('dark'), 'h', 0.005)], 'part_drawer'))
+    DRAWER_BOX(0.45, 0.09, 0.44, 0.35, 0.63, 0.05, 0.3, M('wood_light'), M('wood_body'), 'part_drawer')
+    reg(B(0.14, 0.03, 0.03, 0.35, 0.63, 0.325, M('dark'), 'handle', 0.005))
 
 def b_office_chair():
     reg(CYL(0.26, 0.04, 0, 0.04, 0, M('dark'), 'base', 24))
@@ -735,7 +747,8 @@ def b_picture_frame():
     reg(fr)
 
 def b_chest():
-    HOLLOW(0.62, 0.36, 0.42, 0, 0.18, 0, M('wood'), 'chest_body', t=0.025)
+    # 四壁齐全的箱体（顶口开放，盖子盖顶），面对任何方向都有木板
+    HOLLOW_TOP(0.62, 0.36, 0.42, 0, 0.18, 0, M('wood'), 'chest_body', t=0.025)
     reg(join([B(0.64, 0.05, 0.44, 0, 0.385, 0, M('wood_light'), 'l', 0.008),
               B(0.1, 0.03, 0.03, 0, 0.37, 0.22, M('dark'), 'h', 0.005)], 'part_lid'))
 
@@ -823,9 +836,8 @@ def b_wall_cabinet():
 def b_file_cabinet():
     reg(B(0.45, 0.6, 0.45, 0, 0.3, 0, M('wood_dark'), 'body', 0.008))
     reg(B(0.4, 0.2, 0.028, 0, 0.15, 0.228, M('wood'), 'front_lower', 0.006))
-    reg(join([B(0.4, 0.18, 0.028, 0, 0.42, 0.228, M('wood'), 'f', 0.006),
-              B(0.34, 0.13, 0.4, 0, 0.42, 0.0, M('wood_body'), 'b', 0.004),
-              B(0.14, 0.025, 0.025, 0, 0.42, 0.25, M('steel'), 'h', 0.004)], 'part_drawer'))
+    DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.42, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer')
+    reg(B(0.14, 0.03, 0.03, 0, 0.42, 0.245, M('steel'), 'handle', 0.005))
 
 def b_bean_bag():
     o = SPH(0.45, 0, 0.31, 0, M('teddy'), 'bag', 24, 18)

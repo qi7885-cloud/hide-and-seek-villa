@@ -525,8 +525,8 @@ export const CATALOG = [
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
   { id: 'tvCabinet', name: '电视柜', room: 'living', pos: [-5.75, 0, -5.23], rotY: 0, build: tvCabinet,
     slots: [
-      { key: 'cabL', type: 'interior', name: '左柜内', cap: [0.6, 0.32, 0.3], offset: [-0.4, 0.28, 0] },
-      { key: 'cabR', type: 'interior', name: '右柜内', cap: [0.6, 0.32, 0.3], offset: [0.4, 0.28, 0] },
+      { key: 'cabL', type: 'interior', name: '左柜内', cap: [0.6, 0.18, 0.3], offset: [-0.4, 0.17, 0] },
+      { key: 'cabR', type: 'interior', name: '右柜内', cap: [0.6, 0.18, 0.3], offset: [0.4, 0.17, 0] },
     ] },
   { id: 'tv', name: '电视', room: 'living', pos: [-5.75, 0.56, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
   { id: 'plant', name: '盆栽', room: 'living', pos: [-0.7, 0, -4.9], rotY: 0, build: plant,
@@ -570,7 +570,7 @@ export const CATALOG = [
   { id: 'bed', name: '床', room: 'bedroom', pos: [-6.39, 0, 3.2], rotY: Math.PI / 2, build: bed,
     slots: [{ key: 'under', type: 'under', name: '床底下', cap: [1.3, 0.14, 1.7], offset: [0, 0.09, 0.1] }] },
   { id: 'nightstand', name: '床头柜', room: 'bedroom', pos: [-7.22, 0, 4.35], rotY: Math.PI / 2, build: nightstand,
-    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.38, 0] }] },
+    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.385, 0] }] },
   { id: 'wardrobe', name: '衣柜', room: 'bedroom', pos: [-1.5, 0, 5.06], rotY: Math.PI, build: wardrobe,
     slots: [
       { key: 'hang', type: 'interior', name: '挂衣区', cap: [0.9, 1.35, 0.24], offset: [0, 0.715, 0] },
@@ -578,7 +578,7 @@ export const CATALOG = [
     ] },
   { id: 'dresser', name: '斗柜', room: 'bedroom', pos: [-2.2, 0, 0.33], rotY: 0, build: dresser,
     slots: [
-      { key: 'drawer1', type: 'drawer', name: '上抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.58, 0] },
+      { key: 'drawer1', type: 'drawer', name: '上抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.575, 0] },
       { key: 'drawer2', type: 'drawer', name: '下抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.3, 0] },
     ] },
   { id: 'rugB', name: '床边毯', room: 'bedroom', pos: [-4.3, 0, 2.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
@@ -594,7 +594,7 @@ export const CATALOG = [
     ] },
   { id: 'officeChair', name: '转椅', room: 'study', pos: [3.75, 0, 4.2], rotY: 0, build: officeChair, slots: [] },
   { id: 'fileCabinet', name: '文件柜', room: 'study', pos: [2.55, 0, 5.15], rotY: Math.PI, build: fileCabinet,
-    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.3, 0.12, 0.32], offset: [0, 0.42, 0] }] },
+    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.3, 0.12, 0.32], offset: [0, 0.41, 0] }] },
   { id: 'rug2', name: '地毯', room: 'study', pos: [3.75, 0, 4.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
   { id: 'computerCase', name: '电脑主机', room: 'study', pos: [4.75, 0, 5.0], rotY: Math.PI, build: computerCase,
@@ -655,11 +655,11 @@ export const CATALOG = [
     ] },
   { id: 'dresser2', name: '斗柜', room: 'master', pos: [-2.2, 3.15, 0.33], rotY: 0, build: dresser,
     slots: [
-      { key: 'drawer1', type: 'drawer', name: '上抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.58, 0] },
+      { key: 'drawer1', type: 'drawer', name: '上抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.575, 0] },
       { key: 'drawer2', type: 'drawer', name: '下抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.3, 0] },
     ] },
   { id: 'nightstand2', name: '床头柜', room: 'master', pos: [-7.22, 3.15, 4.35], rotY: Math.PI / 2, build: nightstand,
-    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.38, 0] }] },
+    slots: [{ key: 'drawer', type: 'drawer', name: '抽屉', cap: [0.34, 0.1, 0.28], offset: [0, 0.385, 0] }] },
   { id: 'floorLamp2', name: '落地灯', room: 'master', pos: [-7.05, 3.15, 4.9], rotY: 0, build: floorLamp, slots: [] },
 
   // —— 二楼 · 儿童房 ——

@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { canHide } from './slots.js';
 import { createItemMesh, itemById } from './items.js';
 
+const _tmpQuat = new THREE.Quaternion();
+const _tmpVec = new THREE.Vector3();
+
 // ---------- 开合方式定义（每件家具：槽位 -> 动画部件） ----------
 // kind: hinge=铰链门 slide=抽屉 book=书本抽出翻开 prop=直接动某节点 lift=掀地毯
 const OPENABLE_DEFS = {
@@ -62,7 +65,7 @@ const OPENABLE_DEFS = {
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.43, 0.55, 0.175], axis: 'y', open: -1.9 },
   ],
   wallCabinet: [
-    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.47, 0.35, 0.165], axis: 'y', open: 1.9 },
+    { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.47, 0.35, 0.165], axis: 'y', open: -1.9 },
   ],
   fileCabinet: [
     { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.35 },
@@ -221,6 +224,23 @@ export class Interaction {
       e.pivot.rotation[e.axis] = e.open * k;
     } else if (e.kind === 'slide') {
       e.node.position[e.axis] = e.base[e.axis] + e.open * k;
+      // 藏在抽屉里的物品跟随滑出（考虑家具朝向，把局部轴位移换算成世界位移）
+      const parent = e.node.parent;
+      if (parent) {
+        const q = parent.getWorldQuaternion(_tmpQuat.set(0, 0, 0, 1));
+        _tmpVec.set(0, 0, 0);
+        _tmpVec[e.axis] = e.open * k;
+        _tmpVec.applyQuaternion(q);
+        for (const m of this.placedItems) {
+          if (m.userData.pieceId === e.pieceId && e.slotKeys.includes(m.userData.slotKey)
+              && m.userData._restPos) {
+            m.position.set(
+              m.userData._restPos.x + _tmpVec.x,
+              m.userData._restPos.y + _tmpVec.y,
+              m.userData._restPos.z + _tmpVec.z);
+          }
+        }
+      }
     } else if (e.kind === 'book') {
       e.node.position.z = e.base.z + 0.1 * k;
       e.node.rotation.x = -0.55 * k;
@@ -473,7 +493,7 @@ export class Interaction {
     }
     // 放入动作：从槽位上方 0.35m 落入
     mesh.position.copy(pos).add(new THREE.Vector3(0, 0.35, 0));
-    mesh.userData = { isTargetItem: true, itemId, pieceId, slotKey,
+    mesh.userData = { isTargetItem: true, itemId, pieceId, slotKey, _restPos: pos.clone(),
       ...(extra.bookIndex != null ? { bookIndex: extra.bookIndex } : {}) };
     this.ctx.scene.add(mesh);
     this.dropAnims.push({ mesh, from: mesh.position.clone(), to: pos.clone(), t: 0 });
