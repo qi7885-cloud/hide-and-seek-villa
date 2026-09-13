@@ -843,7 +843,7 @@ def room_trim(key, r):
         ('z', r['maxZ'] - r['minZ'] - in2 * 2, r['minX'] + in2, cz),
         ('z', r['maxZ'] - r['minZ'] - in2 * 2, r['maxX'] - in2, cz),
     ]
-    cove_skip = {'kitchen': [(1.0, 6.7)]}.get(r['id'])   # 北边灯槽跳过楼梯段
+    cove_skip = {'kitchen': [(0.0, 99.0)]}.get(r['id'])   # 厨房北边整条不做灯槽（楼梯井）
     for i, (axis, ln, pc, at) in enumerate(cove_edges):
         segs = [(pc - ln / 2, pc + ln / 2)]
         if cove_skip and i == 0 and axis == 'x':
@@ -961,15 +961,24 @@ def build_villa_v():
         else:
             f = PLANE(w, d, cx, 0.012, cz, M('floor_wood'), f"floor_{r['id']}", uv_scale=(w / 2.2, d / 2.2))
         reg(f)
-    # 天花板（法线朝下）
-    bpy.ops.mesh.primitive_plane_add(size=1, location=T(0, WALL_H - 0.03, 0))
-    c = bpy.context.active_object
-    c.scale = (15.4, 11.4, 1)
-    c.rotation_euler = (math.pi, 0, 0)
-    c.name = 'ceiling'
-    c.data.materials.append(M('ceil'))
-    _apply(c)
-    reg(c)
+    # 天花板（法线朝下；楼梯井上方开洞与二楼楼板楼梯口对齐，
+    # 否则从楼下仰望楼梯像被吊顶/二楼地面封死）
+    hx0, hx1, hz0, hz1 = 4.6, 6.5, -5.5, -4.55   # 楼梯井洞口（与二楼楼板楼梯口对齐）
+    ceiling_parts = [
+        (-7.7, 7.7, -5.7, hz0),        # 北窄条
+        (-7.7, hx0, hz0, hz1),         # 洞西侧
+        (hx1, 7.7, hz0, hz1),          # 洞东侧
+        (-7.7, 7.7, hz1, 5.7),         # 南大部
+    ]
+    for i, (x0, x1, z0, z1) in enumerate(ceiling_parts):
+        bpy.ops.mesh.primitive_plane_add(size=1, location=T((x0 + x1) / 2, WALL_H - 0.03, (z0 + z1) / 2))
+        c = bpy.context.active_object
+        c.scale = (x1 - x0, z1 - z0, 1)
+        c.rotation_euler = (math.pi, 0, 0)
+        c.name = f'ceiling{i}'
+        c.data.materials.append(M('ceil'))
+        _apply(c)
+        reg(c)
     # 门廊台阶
     reg(B(1.6, 0.12, 1.6, -7.9, 0.06, -2.5, M('stone'), 'porch', 0.01))
     # 细部：石膏线/踢脚线/灯槽
@@ -1041,6 +1050,8 @@ def build_upper_v():
         f = PLANE(x1 - x0, z1 - z0, (x0 + x1) / 2, F2 + 0.021, (z0 + z1) / 2,
                   M('floor2_wood'), f'u_floor_{name}', uv_scale=((x1 - x0) / 1.2, (z1 - z0) / 1.2))
         reg(f)
+    # 楼梯井北侧的层间封带（F1墙顶2.9与F2墙底3.15之间的外墙空隙，此处无楼板遮挡）
+    reg(B(2.0, 0.25, 0.24, 5.55, 3.025, -5.62, M('plaster_ext'), 'stairwell_band', 0.006))
     # 楼梯口平台补板
     reg(B(1.0, 0.25, 0.95, 7.0, F2 - 0.125, -5.02, M('slab'), 'u_slab_gate', 0.008))
     # 楼梯
@@ -1072,9 +1083,9 @@ def build_upper_v():
         scale_uv(r, 5.0, slope_len / 0.7)
         reg(r)
     reg(B(EX * 2 + 0.2, 0.14, 0.32, 0, ridgeY + 0.06, 0, M('ridge'), 'roof_ridge', 0.01))
-    # 山墙
+    # 山墙（延伸到屋檐线 ±6.35，斜边与屋面同角，封死山墙端与屋檐间的看天缝隙）
     for ex in (-7.5, 7.5):
-        g = mesh_tri(f'gable{ex}', [(ex, eaveY, -5.62), (ex, eaveY, 5.62), (ex, ridgeY, 0)],
+        g = mesh_tri(f'gable{ex}', [(ex, eaveY, -6.35), (ex, eaveY, 6.35), (ex, ridgeY, 0)],
                      [(0, 1, 2)], M('plaster_ext'))
         reg(g)
     # 烟囱
