@@ -86,7 +86,8 @@ export class Game {
     this.player.setLock(true);
     this.player.teleport(this.villa.spawn.seeker.pos, this.villa.spawn.seeker.yaw);
     this.interact.enabled = true;
-    this.pip.enabled = true;
+    // 画中画观战已取消：找家阶段不再显示藏家第三人称视角
+    this.pip.enabled = false;
     this._crosshair(true);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 限时搜索`);
     this._foundHud();
