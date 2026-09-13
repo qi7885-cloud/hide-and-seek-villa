@@ -48,15 +48,28 @@
       <p class="subtitle">一人在别墅里藏东西，另一人限时搜出来</p>
       <div class="menu-options">
         <label>回合数
-          <select id="opt-rounds">
-            <option value="1" selected>1</option>
-            <option value="3">3</option>
-            <option value="5">5</option>
-          </select>
+          <span class="opt-row">
+            <select id="opt-rounds">
+              <option value="1" selected>1</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+              <option value="custom">自定义</option>
+            </select>
+            <input type="number" id="opt-rounds-custom" class="custom-input hidden"
+                   min="1" max="20" step="1" value="7" placeholder="1-20">
+          </span>
         </label>
         <label>藏匿件数
-          <input type="number" id="opt-hidecount" min="1" max="8" step="1" value="1"
-                 title="自定义本回合要藏的物品件数（1-8）">
+          <span class="opt-row">
+            <select id="opt-hidecount">
+              <option value="1" selected>1 件</option>
+              <option value="2">2 件</option>
+              <option value="3">3 件</option>
+              <option value="custom">自定义</option>
+            </select>
+            <input type="number" id="opt-hidecount-custom" class="custom-input hidden"
+                   min="1" max="8" step="1" value="5" placeholder="1-8">
+          </span>
         </label>
         <label>搜索时间
           <select id="opt-time">

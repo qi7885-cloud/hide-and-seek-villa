@@ -126,10 +126,20 @@ body { font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; col
 
 .menu-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; text-align: left; }
 .menu-options label { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: #c8d4e0; }
+.menu-options .opt-row { display: flex; gap: 8px; align-items: center; }
 .menu-options select {
   background: #1c2836; color: #e8ecf1; border: 1px solid rgba(255,255,255,.2);
   border-radius: 6px; padding: 6px 10px; font-size: 14px; min-width: 170px;
+  transition: min-width .15s ease;
 }
+.menu-options select.narrow { min-width: 96px; }
+.menu-options input.custom-input {
+  background: #1c2836; color: #e8ecf1; border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px; padding: 6px 10px; font-size: 14px; width: 66px;
+  font-family: inherit; text-align: center;
+}
+.menu-options input.custom-input:focus { outline: none; border-color: #ffd166; }
+.menu-options input.custom-input::-webkit-inner-spin-button { opacity: 1; }
 
 .btn-primary {
   background: linear-gradient(135deg, #ffd166, #ffb347); color: #21252b;

@@ -104,11 +104,32 @@ async function init() {
   godCam.enabled = true;
   godCam.autoRotate = true;
 
+  // ---- 下拉"自定义"选项：选中后显示配套输入框 ----
+  for (const [selId, inputId] of [['opt-rounds', 'opt-rounds-custom'],
+                                  ['opt-hidecount', 'opt-hidecount-custom']]) {
+    const sel = document.getElementById(selId);
+    const input = document.getElementById(inputId);
+    sel.addEventListener('change', () => {
+      const isCustom = sel.value === 'custom';
+      input.classList.toggle('hidden', !isCustom);
+      sel.classList.toggle('narrow', isCustom);
+      if (isCustom) input.focus();
+    });
+  }
+
   // ---- 菜单与流程按钮 ----
   document.getElementById('btn-start').onclick = () => {
-    game.settings.rounds = +document.getElementById('opt-rounds').value;
+    const roundsSel = document.getElementById('opt-rounds').value;
+    const roundsCustom = +document.getElementById('opt-rounds-custom').value;
+    const hideSel = document.getElementById('opt-hidecount').value;
+    const hideCustom = +document.getElementById('opt-hidecount-custom').value;
+    game.settings.rounds = roundsSel === 'custom'
+      ? Math.max(1, Math.min(20, roundsCustom || 1))
+      : +roundsSel;
     game.settings.seekTime = +document.getElementById('opt-time').value;
-    game.settings.hideCount = Math.max(1, Math.min(8, +document.getElementById('opt-hidecount').value || 1));
+    game.settings.hideCount = hideSel === 'custom'
+      ? Math.max(1, Math.min(8, hideCustom || 1))
+      : +hideSel;
     game.settings.hints = document.getElementById('opt-hints').value === 'on';
     document.getElementById('screen-menu').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
