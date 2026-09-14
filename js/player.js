@@ -28,7 +28,6 @@ export class FPPlayer {
     this._onKeyUp = (e) => { this.keys[e.code] = false; };
     this._onLockChange = () => {
       this.enabled = document.pointerLockElement === this.dom;
-      this.dom.dispatchEvent(new CustomEvent('pointerlockstate', { detail: this.enabled }));
     };
 
     document.addEventListener('mousemove', this._onMouseMove);
@@ -90,8 +89,12 @@ export class FPPlayer {
         const d2 = dx * dx + dz * dz;
         if (d2 >= this.radius * this.radius) continue;
         if (c.maxY <= feet + STEP + 0.01) {
-          // 台阶/矮台：记为支撑面候选，不阻挡
-          support = Math.max(support, c.maxY);
+          // 台阶/矮台：仅当圆心已进入其投影范围才作为支撑面（贴靠不再瞬移上台），
+          // 矮台永不横向阻挡（保证上下楼梯顺畅）
+          if (this.pos.x >= c.minX && this.pos.x <= c.maxX &&
+              this.pos.z >= c.minZ && this.pos.z <= c.maxZ) {
+            support = Math.max(support, c.maxY);
+          }
           continue;
         }
         if (c.minY >= feet + 1.8) continue;  // 头顶以上的结构不碰撞

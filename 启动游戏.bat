@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title 你藏我找 · 别墅版
+title 你藏我找
 cd /d "%~dp0"
 echo 正在启动本地服务器...
 start "" "http://127.0.0.1:8080"

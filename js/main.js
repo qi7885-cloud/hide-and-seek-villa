@@ -7,11 +7,12 @@ import { buildFurniture } from './furniture.js';
 import { FPPlayer } from './player.js';
 import { Interaction } from './interact.js';
 import { PlacementUI } from './placement.js';
-import { GodCamera, createAvatar, SpectatorPiP } from './spectator.js';
-import { Game } from './game.js';
+import { GodCamera } from './spectator.js';
+import { Game, Phase } from './game.js';
 import { canHide } from './slots.js';
 import { itemById, setItemFactory } from './items.js';
 import { SFX } from './audio.js';
+import { addWallCartoons } from './cartoons.js';
 import { loadAllModels, instantiatePiece, staticModel, instantiateItem } from './models.js';
 
 const container = document.getElementById('app');
@@ -21,12 +22,8 @@ async function init() {
   const { scene, camera, tickHandlers } = ctx;
   camera.layers.enable(2);   // 主相机可见屋顶层（院内/院内视角）
 
-  // ---- Blender 模型预加载（进度写进加载屏）----
-  const loadingTitle = document.querySelector('#loading h1');
-  await loadAllModels((done, total) => {
-    if (loadingTitle) loadingTitle.textContent = `加载模型 ${done}/${total}…`;
-  });
-  if (loadingTitle) loadingTitle.textContent = '加载中…';
+  // ---- Blender 模型预加载（加载屏固定提示语）----
+  await loadAllModels();
 
   // ---- 别墅：碰撞骨架由原代码生成（玩法不变），视觉交给 GLB ----
   const colliders = [];
@@ -37,7 +34,10 @@ async function init() {
   buildYard(scene, colliders);         // 庭院碰撞
   const villaGlb = staticModel('villa');
   const yardGlb = staticModel('yard');
-  if (villaGlb) scene.add(villaGlb);
+  if (villaGlb) {
+    scene.add(villaGlb);
+    addWallCartoons(villaGlb);   // 一楼墙面简笔卡通画（相片墙+白色空框）
+  }
   if (yardGlb) scene.add(yardGlb);
 
   // ---- 家具与槽位（GLB 优先，缺失回退程序化）----
@@ -58,21 +58,12 @@ async function init() {
   interact.onHideInteract = (piece) => placement.onAimE(piece);
   tickHandlers.push(() => placement.update());
 
-  // ---- 上帝视角 / 角色替身 / 画中画观战 ----
-  const godCam = new GodCamera(camera, ctx.renderer.domElement);
+  // ---- 上帝视角（菜单背后的环绕展示） ----
+  const godCam = new GodCamera(camera);
   tickHandlers.push(() => godCam.update());
-  const avatar = createAvatar(staticModel('avatar'));
-  scene.add(avatar);
-  tickHandlers.push(() => {
-    avatar.position.set(player.pos.x, player.pos.y, player.pos.z);
-    avatar.rotation.y = player.yaw + Math.PI;
-  });
-  const pip = new SpectatorPiP();
-  tickHandlers.push((dt) => pip.update(player.pos, player.yaw, dt));
-  ctx.hooks.pipRender = (r, s) => pip.render(r, s, window.innerWidth, window.innerHeight);
 
   // ---- 回合系统 ----
-  const game = new Game(ctx, villa, pieces, interact, placement, player, godCam, avatar, pip);
+  const game = new Game(ctx, villa, pieces, interact, placement, player, godCam);
 
   // ---- 通用 toast ----
   const toastEl = document.getElementById('toast');
@@ -147,11 +138,11 @@ async function init() {
   // Esc 退出本局（游戏中按 Esc；指针锁定时浏览器会先解锁并派发该按键，多数情况一次生效）
   document.addEventListener('keydown', (e) => {
     if (e.code !== 'Escape') return;
-    if (game.phase === 'hide' || game.phase === 'seek') game.quitToMenu();
+    if (game.phase === Phase.HIDE || game.phase === Phase.SEEK) game.quitToMenu();
   });
 
   // 调试接口（浏览器控制台可用 __game.pos 查看位置）
-  window.__game = { ctx, player, colliders, villa, pieces, interact, placement, game, godCam, pip, canHide, itemById };
+  window.__game = { ctx, player, colliders, villa, pieces, interact, placement, game, godCam, canHide, itemById };
 
   ctx.start();
   document.getElementById('loading').classList.add('hidden');
@@ -160,6 +151,7 @@ async function init() {
 
 init().catch((err) => {
   console.error('[HideSeek] init failed:', err);
+  window.__initStack = err.stack || String(err);
   const el = document.querySelector('#loading .screen-card');
-  if (el) el.innerHTML = `<h1>加载失败</h1><p class="subtitle">${err.message}</p>`;
+  if (el) el.innerHTML = `<h1>加载失败</h1><p class="subtitle">${err?.message ?? err}</p>`;
 });

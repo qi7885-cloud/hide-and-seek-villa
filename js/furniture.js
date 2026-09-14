@@ -7,11 +7,11 @@ import { rugTexture } from './textures.js';
 const C = {
   wood: 0x9a6b3f, woodDark: 0x7a5230, woodLight: 0xcdaa7d,
   white: 0xf2f2f0, offWhite: 0xe8e6e0, metal: 0x9aa2ab, dark: 0x3a3d42,
-  sofa: 0x6e8ca8, sofaDark: 0x5a7392, cushion: 0x8aa6c0,
+  sofa: 0x6e8ca8,
   green: 0x5e8c4a, greenDark: 0x47703a, pot: 0xb0603c,
-  red: 0xb5554d, rug: 0xa8695c, rugBorder: 0x8a5045,
+  red: 0xb5554d,
   mattress: 0xeae6dc, blanket: 0x7f9db8, pillow: 0xf7f4ec,
-  gray: 0xb9bdb6, screen: 0x1c1e22, paper: 0xf5f1e6,
+  gray: 0xb9bdb6, screen: 0x1c1e22,
   bookCols: [0xb5554d, 0x5e7ea8, 0x6e9a5e, 0xc9a227, 0x8a6ea8, 0xc97b4a, 0x5ea8a0],
 };
 const mat = (color, opt = {}) => new THREE.MeshLambertMaterial({ color, ...opt });
@@ -101,7 +101,8 @@ function tv() {
 }
 
 function carpet(w = 2.6, d = 1.8) {
-  const g = new THREE.Group(), P = {};
+  // 掀开动画走 interact.js 的 __group 整体铰链，无需 parts
+  const g = new THREE.Group();
   const base = new THREE.Mesh(
     new THREE.BoxGeometry(w, 0.022, d),
     new THREE.MeshLambertMaterial({ map: rugTexture(w, d) })
@@ -109,8 +110,7 @@ function carpet(w = 2.6, d = 1.8) {
   base.position.y = 0.035;   // 抬到地板视觉层之上，避免共面闪烁
   base.receiveShadow = true;
   g.add(base);
-  P.lift = base;
-  return { group: g, parts: P };
+  return { group: g, parts: {} };
 }
 
 function plant() {
@@ -348,24 +348,11 @@ function bookshelf() {
       const w = 0.032 + (bi % 3) * 0.012;
       const h = 0.24 + ((bi * 7) % 5) * 0.014;
       const b = box(g, w, h, 0.22, C.bookCols[bi % C.bookCols.length], x + w / 2, yBase + h / 2, 0);
-      b.userData.bookIndex = bi;
       P.books.push(b);
       x += w + 0.006;
       bi++;
     }
   }
-  return { group: g, parts: P };
-}
-
-function pictureFrame() {
-  const g = new THREE.Group(), P = {};
-  const fr = new THREE.Group();
-  box(fr, 0.4, 0.3, 0.025, C.woodDark, 0, 0.15, 0);
-  box(fr, 0.34, 0.24, 0.005, 0xd8e4ee, 0, 0.15, 0.014);          // 照片
-  fr.position.y = 0;
-  fr.rotation.x = -0.13;                                          // 斜靠
-  P.tilt = fr;
-  g.add(fr);
   return { group: g, parts: P };
 }
 
@@ -386,16 +373,6 @@ function shelfUnit() {
   box(g, 0.05, 1.8, 0.34, C.woodDark, -0.46, 0.9, 0);
   box(g, 0.05, 1.8, 0.34, C.woodDark, 0.46, 0.9, 0);
   for (const y of [0.04, 0.62, 1.2, 1.78]) box(g, 0.92, 0.045, 0.32, C.wood, 0, y, 0);
-  return { group: g, parts: {} };
-}
-
-function crate() {
-  // 开口纸箱
-  const g = new THREE.Group();
-  const card = 0xc9a86a;
-  box(g, 0.5, 0.42, 0.5, card, 0, 0.21, 0);
-  box(g, 0.42, 0.02, 0.42, 0xa8875a, 0, 0.05, 0).castShadow = false;
-  box(g, 0.52, 0.04, 0.1, 0xb5975e, 0, 0.28, 0);                 // 封箱带
   return { group: g, parts: {} };
 }
 
@@ -487,16 +464,6 @@ function backpack() {
   cyl(g, 0.05, 0.03, C.dark, 0, 0.375, 0, 12);
   return { group: g, parts: {} };
 }
-function bucket() {
-  const g = new THREE.Group();
-  const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.13, 0.3, 20, 1, true),
-    new THREE.MeshLambertMaterial({ color: C.metal, side: THREE.DoubleSide }));
-  wall.position.y = 0.15; wall.castShadow = true; g.add(wall);
-  cyl(g, 0.128, 0.012, C.dark, 0, 0.02, 0, 20);
-  const h = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.008, 8, 20), mat(C.metal));
-  h.position.y = 0.3; h.rotation.x = Math.PI / 2; g.add(h);
-  return { group: g, parts: {} };
-}
 function planter() {
   const g = new THREE.Group();
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.42, 24), mat(C.pot));
@@ -507,6 +474,70 @@ function planter() {
   s1.position.y = 0.85; s1.castShadow = true; g.add(s1);
   const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), mat(C.greenDark));
   s2.position.set(0.12, 0.7, 0.08); s2.castShadow = true; g.add(s2);
+  return { group: g, parts: {} };
+}
+
+function treadmill() {
+  // 跑步机：跑带朝后，立柱+控制台在局部 +z 前端
+  const g = new THREE.Group();
+  box(g, 0.8, 0.12, 1.75, C.dark, 0, 0.09, 0);
+  box(g, 0.56, 0.03, 1.5, C.screen, 0, 0.165, -0.06).castShadow = false;   // 跑带
+  box(g, 0.07, 0.07, 1.75, C.metal, -0.37, 0.17, 0);
+  box(g, 0.07, 0.07, 1.75, C.metal, 0.37, 0.17, 0);
+  box(g, 0.07, 0.92, 0.07, C.metal, -0.31, 0.62, 0.78);
+  box(g, 0.07, 0.92, 0.07, C.metal, 0.31, 0.62, 0.78);
+  box(g, 0.76, 0.36, 0.09, C.dark, 0, 1.18, 0.8);
+  box(g, 0.52, 0.18, 0.02, C.screen, 0, 1.2, 0.74).castShadow = false;     // 显示屏
+  box(g, 0.06, 0.05, 0.52, C.metal, -0.31, 0.98, 0.52);
+  box(g, 0.06, 0.05, 0.52, C.metal, 0.31, 0.98, 0.52);
+  return { group: g, parts: {} };
+}
+
+function flymachine() {
+  // 飞鸟机（蝴蝶机）：座垫+靠背在 -z，两侧摆臂托盘朝内
+  const g = new THREE.Group();
+  box(g, 0.85, 0.1, 0.95, C.dark, 0, 0.05, 0);
+  box(g, 0.09, 0.44, 0.09, C.metal, 0, 0.32, -0.12);
+  box(g, 0.48, 0.1, 0.46, C.gray, 0, 0.58, -0.1);                 // 座垫
+  box(g, 0.48, 0.54, 0.1, C.gray, 0, 0.9, -0.36);                 // 靠背
+  for (const s of [-1, 1]) {
+    box(g, 0.07, 0.66, 0.07, C.metal, s * 0.52, 0.72, 0.16);
+    box(g, 0.52, 0.07, 0.07, C.metal, s * 0.31, 1.02, 0.16);
+    const pad = cyl(g, 0.1, 0.12, C.red, s * 0.1, 1.02, 0.16, 14);
+    pad.rotation.x = Math.PI / 2;
+  }
+  box(g, 1.14, 0.08, 0.08, C.metal, 0, 1.1, -0.42);
+  return { group: g, parts: {} };
+}
+
+function dumbbellrack() {
+  // 两层哑铃架 + 5 只哑铃
+  const g = new THREE.Group();
+  box(g, 1.0, 0.06, 0.42, C.dark, 0, 0.38, -0.02);
+  box(g, 1.0, 0.06, 0.46, C.dark, 0, 0.08, 0);
+  box(g, 0.06, 0.38, 0.42, C.metal, -0.47, 0.21, 0);
+  box(g, 0.06, 0.38, 0.42, C.metal, 0.47, 0.21, 0);
+  const bell = (x, y, col) => {
+    const bar = cyl(g, 0.024, 0.24, C.metal, x, y, 0, 10);
+    bar.rotation.z = Math.PI / 2;
+    const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), mat(col));
+    s1.position.set(x - 0.11, y, 0); s1.castShadow = true; g.add(s1);
+    const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), mat(col));
+    s2.position.set(x + 0.11, y, 0); s2.castShadow = true; g.add(s2);
+  };
+  bell(-0.3, 0.47, C.dark); bell(0, 0.47, C.red); bell(0.3, 0.47, C.dark);
+  bell(-0.3, 0.17, C.red); bell(0.3, 0.17, C.dark);
+  return { group: g, parts: {} };
+}
+
+function yogamat() {
+  // 瑜伽垫：平铺 + 一端卷轴
+  const g = new THREE.Group();
+  box(g, 0.7, 0.025, 1.42, 0x7e6ea8, 0, 0.013, 0.09).castShadow = false;
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 16), mat(0x6d5d96));
+  roll.rotation.z = Math.PI / 2;
+  roll.position.set(0, 0.06, -0.76);
+  roll.castShadow = true; g.add(roll);
   return { group: g, parts: {} };
 }
 
@@ -583,8 +614,6 @@ export const CATALOG = [
     ] },
   { id: 'rugB', name: '床边毯', room: 'bedroom', pos: [-4.3, 0, 2.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
     slots: [{ key: 'under', type: 'under', name: '毯子下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
-  { id: 'pictureFrame3', name: '相框', room: 'bedroom', pos: [-2.0, 0.81, 0.4], rotY: 0, build: pictureFrame, collide: false,
-    slots: [{ key: 'behind', type: 'behind', name: '相框后面', cap: [0.3, 0.22, 0.02], offset: [0, 0.16, -0.03], needsTag: 'thin' }] },
 
   // —— 书房 ——
   { id: 'desk', name: '书桌', room: 'study', pos: [3.75, 0, 5.09], rotY: Math.PI, build: desk,
@@ -604,11 +633,9 @@ export const CATALOG = [
     slots: [
       { key: 'shelf1', type: 'top', name: '第1层', cap: [0.8, 0.3, 0.22], offset: [0, 0.115, 0] },
       { key: 'shelf4', type: 'top', name: '第4层', cap: [0.8, 0.3, 0.22], offset: [0, 1.435, 0] },
-      { key: 'pages1', type: 'pages', name: '书页间·上排', cap: [0.26, 0.3, 0.008], offset: [-0.2, 0.68, 0], needsTag: 'paper', allowFold: true, bookIndex: 3 },
-      { key: 'pages2', type: 'pages', name: '书页间·下排', cap: [0.26, 0.3, 0.008], offset: [0.15, 1.12, 0], needsTag: 'paper', allowFold: true, bookIndex: 14 },
+      { key: 'pages1', type: 'pages', name: '书页间·上排', cap: [0.26, 0.3, 0.008], offset: [-0.2, 0.68, 0], needsTag: 'paper', allowFold: true },
+      { key: 'pages2', type: 'pages', name: '书页间·下排', cap: [0.26, 0.3, 0.008], offset: [0.15, 1.12, 0], needsTag: 'paper', allowFold: true },
     ] },
-  { id: 'pictureFrame', name: '相框', room: 'study', pos: [4.35, 0.76, 5.28], rotY: Math.PI, build: pictureFrame, collide: false,
-    slots: [{ key: 'behind', type: 'behind', name: '相框后面', cap: [0.3, 0.22, 0.02], offset: [0, 0.16, -0.03], needsTag: 'thin' }] },
 
   // —— 二楼 · 家庭厅（y=3.15）——
   { id: 'sofa2', name: '沙发', room: 'lounge2', pos: [-5.3, 3.15, -0.5], rotY: Math.PI, build: sofa,
@@ -624,8 +651,8 @@ export const CATALOG = [
     slots: [
       { key: 'shelf1', type: 'top', name: '第1层', cap: [0.8, 0.3, 0.22], offset: [0, 0.115, 0] },
       { key: 'shelf4', type: 'top', name: '第4层', cap: [0.8, 0.3, 0.22], offset: [0, 1.435, 0] },
-      { key: 'pages1', type: 'pages', name: '书页间·上排', cap: [0.26, 0.3, 0.008], offset: [-0.2, 0.68, 0], needsTag: 'paper', allowFold: true, bookIndex: 3 },
-      { key: 'pages2', type: 'pages', name: '书页间·下排', cap: [0.26, 0.3, 0.008], offset: [0.15, 1.12, 0], needsTag: 'paper', allowFold: true, bookIndex: 14 },
+      { key: 'pages1', type: 'pages', name: '书页间·上排', cap: [0.26, 0.3, 0.008], offset: [-0.2, 0.68, 0], needsTag: 'paper', allowFold: true },
+      { key: 'pages2', type: 'pages', name: '书页间·下排', cap: [0.26, 0.3, 0.008], offset: [0.15, 1.12, 0], needsTag: 'paper', allowFold: true },
     ] },
   { id: 'plant2', name: '盆栽', room: 'lounge2', pos: [-0.7, 3.15, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
@@ -638,12 +665,11 @@ export const CATALOG = [
       { key: 'mid', type: 'interior', name: '中层格', cap: [0.8, 0.5, 0.26], offset: [0, 0.91, 0] },
       { key: 'top', type: 'top', name: '顶板上', cap: [0.8, 0.25, 0.26], offset: [0, 1.82, 0] },
     ] },
-  { id: 'crate1', name: '纸箱', room: 'storage', pos: [3.6, 3.15, -1.2], rotY: 0.3, build: crate,
-    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.18, 0] }] },
-  { id: 'crate2', name: '纸箱', room: 'storage', pos: [2.6, 3.15, -2.6], rotY: -0.4, build: crate,
-    slots: [{ key: 'inner', type: 'interior', name: '箱子里', cap: [0.38, 0.3, 0.38], offset: [0, 0.18, 0] }] },
-  { id: 'bucket', name: '水桶', room: 'storage', pos: [1.6, 3.15, -1.2], rotY: 0.3, build: bucket,
-    slots: [{ key: 'inner', type: 'interior', name: '桶里', cap: [0.26, 0.26, 0.26], offset: [0, 0.17, 0] }] },
+  // —— 二楼 · 健身房（储物间改造，留空楼梯口与西侧门走道）——
+  { id: 'treadmill', name: '跑步机', room: 'storage', pos: [1.5, 3.15, -0.78], rotY: -Math.PI / 2, build: treadmill, slots: [] },
+  { id: 'flyMachine', name: '飞鸟机', room: 'storage', pos: [4.4, 3.15, -3.9], rotY: 0, build: flymachine, slots: [] },
+  { id: 'dumbbellRack', name: '哑铃架', room: 'storage', pos: [2.1, 3.15, -4.05], rotY: 0, build: dumbbellrack, slots: [] },
+  { id: 'yogaMat', name: '瑜伽垫', room: 'storage', pos: [3.6, 3.15, -2.3], rotY: 0.35, build: yogamat, collide: false, slots: [] },
 
   // —— 二楼 · 主卧 ——
   { id: 'bed2', name: '大床', room: 'master', pos: [-6.39, 3.15, 3.2], rotY: Math.PI / 2, build: bed,
@@ -678,7 +704,7 @@ export const CATALOG = [
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
 
   // —— 庭院 ——
-  { id: 'bench', name: '长椅', room: 'yard', pos: [4.5, 0, 6.6], rotY: Math.PI, build: bench,
+  { id: 'bench', name: '长椅', room: 'yard', pos: [-11.15, 0, 0.55], rotY: Math.PI / 2, build: bench,
     slots: [{ key: 'under', type: 'under', name: '椅面下', cap: [1.2, 0.16, 0.4], offset: [0, 0.2, 0] }] },
   { id: 'mailbox', name: '信箱', room: 'yard', pos: [-10.9, 0, -0.8], rotY: Math.PI / 2, build: mailbox,
     slots: [{ key: 'inner', type: 'interior', name: '信箱里', cap: [0.16, 0.12, 0.28], offset: [0, 1.085, 0] }] },
@@ -724,4 +750,3 @@ export function buildFurniture(scene, colliders, modelFactory = null) {
   return pieces;
 }
 
-export function pieceById(pieces, id) { return pieces.find(p => p.def.id === id); }

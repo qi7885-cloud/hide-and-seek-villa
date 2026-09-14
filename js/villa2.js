@@ -12,15 +12,17 @@ let VISUALS = true;                 // false = 仅碰撞骨架（GLB 接管视�
 export function setUpperVisuals(v) { VISUALS = v; }
 
 function box(scene, colliders, cx, cy, cz, sx, sy, sz, m, opts = {}) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
-  mesh.position.set(cx, cy, cz);
-  mesh.castShadow = opts.castShadow !== false;
-  mesh.receiveShadow = true;
-  if (VISUALS) scene.add(mesh);
+  if (VISUALS) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
+    mesh.position.set(cx, cy, cz);
+    mesh.castShadow = opts.castShadow !== false;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
   if (opts.collide !== false) {
     colliders.push({ minX: cx - sx / 2, maxX: cx + sx / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2, minY: cy - sy / 2, maxY: cy + sy / 2 });
   }
-  return mesh;
+  return null;
 }
 
 // 带开口的直墙（yBase 为墙底高度）
@@ -126,7 +128,8 @@ export function buildUpperFloor(scene, colliders) {
   for (let i = 0; i < STEPS; i += 3) {
     box(scene, colliders, 1.2 + i * TREAD + TREAD / 2, (i + 1) * RISE + 0.45, -4.53, 0.05, 0.9, 0.05, mat(0x8a6a45), { collide: false });
   }
-  box(scene, colliders, 3.85, 2.72, -4.53, Math.hypot(5.22, 3.15), 0.07, 0.07, mat(0x8a6a45), { collide: false }).rotation.z = Math.atan2(3.15, 5.22); // 扶手斜梁（随坡度）
+  const railBeam = box(scene, colliders, 3.85, 2.72, -4.53, Math.hypot(5.22, 3.15), 0.07, 0.07, mat(0x8a6a45), { collide: false });
+  if (railBeam) railBeam.rotation.z = Math.atan2(3.15, 5.22); // 扶手斜梁（随坡度，纯装饰无碰撞）
 
   // ---- 楼梯井南缘实体墙（GLB 提供视觉；碰撞在此生成）——
   // 上楼到顶正对墙面，同时防止从储物间跌落楼梯井；东段 6.45..7.5 为落地出口 ----

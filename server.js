@@ -21,12 +21,18 @@ const MIME = {
 };
 
 http.createServer((req, res) => {
-  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(req.url.split('?')[0]);
+  } catch (e) {
+    res.writeHead(400); return res.end('Bad Request');
+  }
   if (urlPath === '/') urlPath = '/index.html';
   const filePath = path.join(ROOT, path.normalize(urlPath));
 
-  // 防目录穿越：必须仍在项目根目录内
-  if (!filePath.startsWith(ROOT)) {
+  // 防目录穿越：解析后的真实路径必须仍在项目根目录内（用 relative 防兄弟目录前缀绕过）
+  const rel = path.relative(ROOT, filePath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
     res.writeHead(403); return res.end('Forbidden');
   }
 

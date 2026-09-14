@@ -31,5 +31,4 @@ export const SFX = {
   found() { tone(523, 0.12, 'sine', 0.14); tone(659, 0.12, 'sine', 0.14, 0.11); tone(784, 0.24, 'sine', 0.14, 0.22); tone(1046, 0.3, 'sine', 0.1, 0.34); },
   lost()  { tone(311, 0.22, 'sine', 0.11); tone(233, 0.3, 'sine', 0.11, 0.18); tone(175, 0.4, 'sine', 0.1, 0.38); },
   tick()  { tone(1050, 0.03, 'square', 0.04); },
-  unlock(){ tone(440, 0.05, 'sine', 0.06); },
 };

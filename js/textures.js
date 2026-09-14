@@ -16,42 +16,6 @@ function toTexture(canvas, repeatX = 1, repeatY = 1) {
   return tex;
 }
 
-// 人字拼木地板：一块 256px 画布包含完整人字单元，按尺寸平铺
-export function herringboneTexture(wMeters, dMeters) {
-  const c = makeCanvas(256), x = c.getContext('2d');
-  x.fillStyle = '#c9a878'; x.fillRect(0, 0, 256, 256);
-  const tones = ['#c9a878', '#bf9d6d', '#d2b184', '#b6945f', '#c8a470'];
-  const L = 128, W = 32; // 板长/板宽（像素）
-  // 人字排布：两组旋转 ±45° 的板条
-  x.save();
-  x.translate(128, 128);
-  const drawPlank = (px, py, angle, tone) => {
-    x.save();
-    x.translate(px, py); x.rotate(angle);
-    x.fillStyle = tone;
-    x.fillRect(-L / 2, -W / 2, L, W);
-    // 板缝与木纹
-    x.strokeStyle = 'rgba(90,60,30,.35)'; x.lineWidth = 2;
-    x.strokeRect(-L / 2, -W / 2, L, W);
-    x.strokeStyle = 'rgba(120,85,45,.18)'; x.lineWidth = 1;
-    for (let i = -L / 2 + 14; i < L / 2; i += 18) {
-      x.beginPath(); x.moveTo(i, -W / 2 + 3); x.lineTo(i + 10, W / 2 - 3); x.stroke();
-    }
-    x.restore();
-  };
-  // 交错铺 4 组
-  for (let row = -2; row <= 2; row++) {
-    for (let col = -2; col <= 2; col++) {
-      const px = col * L * 0.72, py = row * L * 0.72;
-      drawPlank(px, py, Math.PI / 4, tones[(row + col + 4) % tones.length]);
-      drawPlank(px + L * 0.36, py + L * 0.36, -Math.PI / 4, tones[(row + col + 5) % tones.length]);
-    }
-  }
-  x.restore();
-  const cell = 1.1; // 一个画布单元代表约1.1米
-  return toTexture(c, wMeters / cell, dMeters / cell);
-}
-
 // 素色木纹（家具/桌面）
 export function woodTexture(base = '#8a5f36') {
   const c = makeCanvas(128), x = c.getContext('2d');

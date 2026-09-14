@@ -52,9 +52,6 @@ const OPENABLE_DEFS = {
   computerCase: [
     { key: 'inner', part: 'sidePanel', kind: 'hinge', hinge: [0.1, 0.23, -0.225], axis: 'y', open: 2.1 },
   ],
-  chest: [
-    { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.36, -0.22], axis: 'x', open: -1.9 },
-  ],
   toyChest: [
     { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.36, -0.22], axis: 'x', open: -1.9 },
   ],
@@ -70,9 +67,6 @@ const OPENABLE_DEFS = {
   fileCabinet: [
     { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.35 },
   ],
-  pictureFrame3: [
-    { key: 'behind', part: 'tilt', kind: 'prop', axis: 'x', closed: -0.13, open: 0.55 },
-  ],
   carpetL: [
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.42, hinge: [0, 0, 0.9] },
   ],
@@ -86,9 +80,6 @@ const OPENABLE_DEFS = {
   bookshelf2: [
     { key: 'pages1', part: 'books:3', kind: 'book' },
     { key: 'pages2', part: 'books:14', kind: 'book' },
-  ],
-  pictureFrame: [
-    { key: 'behind', part: 'tilt', kind: 'prop', axis: 'x', closed: -0.13, open: 0.55 },
   ],
 };
 
@@ -136,7 +127,7 @@ export class Interaction {
           pieceId: piece.def.id, key: d.key, slotKeys: d.slots || [d.key],
           kind: d.kind, axis: d.axis, open: d.open, node,
           t: 0, target: 0, speed: 2.2,
-          base: node.position.clone(), baseRot: node.rotation[d.axis] ?? 0,
+          base: node.position.clone(),
           pivot: null,
         };
 
@@ -148,7 +139,8 @@ export class Interaction {
             pivot.position.copy(hingeWorld);
             const parent = piece.group.parent;
             const wr = piece.group.rotation.y;
-            while (piece.group.children.length) pivot.add(piece.group.children[0]);
+            // attach 保世界变换：地毯停在原位，之后绕铰链整体掀起
+            while (piece.group.children.length) pivot.attach(piece.group.children[0]);
             pivot.rotation.y = wr;
             parent.remove(piece.group);
             parent.add(pivot);
@@ -244,8 +236,6 @@ export class Interaction {
     } else if (e.kind === 'book') {
       e.node.position.z = e.base.z + 0.1 * k;
       e.node.rotation.x = -0.55 * k;
-    } else if (e.kind === 'prop') {
-      e.node.rotation[e.axis] = e.closed + (e.open - e.closed) * k;
     }
   }
 
@@ -258,9 +248,16 @@ export class Interaction {
     return true;
   }
 
-  isSlotOpen(pieceId, slotKey) {
-    const e = this.openBySlotKey[`${pieceId}:${slotKey}`];
-    return !e || e.t > 0.7;
+  // 该槽位是否有对应的揭示动画（决定能否作为藏点：藏了必须找得到）
+  revealable(pieceId, slotKey) {
+    return !!this.openBySlotKey[`${pieceId}:${slotKey}`];
+  }
+
+  // 回合切换/退出时复位交互状态：退出检查特写、合上所有柜门抽屉
+  resetRound() {
+    this._exitInspect();
+    for (const e of this.openEntries) e.target = 0;
+    this._lastHit = null;
   }
 
   // ---------- 射线与提示 ----------
@@ -441,9 +438,13 @@ export class Interaction {
     }
     // 先尝试开合（柜门/抽屉/地毯/书本）
     if (this.togglePiece(hit.piece.def.id)) return;
-    // 再尝试检查直视容器（杯/盘/桶/盆栽）
-    const insSlot = hit.piece.slots.find(s => s.type === 'interior' || s.type === 'soil');
-    if (insSlot) this._enterInspect(hit.piece, insSlot);
+    // 再尝试检查直视容器（杯/盘/桶/盆栽/储物架等）
+    const interiors = hit.piece.slots.filter(s => s.type === 'interior' || s.type === 'soil');
+    if (interiors.length) {
+      // 多藏格的家具（如储物架）：优先检查已藏了东西的那格
+      const filled = interiors.find(s => s.filledWith);
+      this._enterInspect(hit.piece, filled || interiors[0]);
+    }
   }
 
   // ---------- 藏匿放置 ----------
@@ -486,7 +487,6 @@ export class Interaction {
         case 'interior': case 'drawer': y += ih / 2 - slot.cap[1] / 2; break;
         case 'soil': y += ih / 4; break;                                   // 半埋进土里
         case 'pages': mesh.rotation.z = Math.PI / 2; break;                // 竖着夹进书页
-        case 'behind': mesh.rotation.x = Math.PI / 2; y += ih / 2; break;  // 立在相框后
       }
       pos = new THREE.Vector3(slot.worldPos.x, y, slot.worldPos.z);
       if (slot.type === 'top') mesh.rotation.y = (Math.random() - 0.5) * 0.6;

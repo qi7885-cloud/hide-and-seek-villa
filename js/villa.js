@@ -2,8 +2,7 @@
 // M13：视觉层由 Blender 建模（models/villa.glb）接管，本文件在 visuals=false 时
 // 只生成碰撞体与灯光，保证玩法层（碰撞/出生点）不变。
 import * as THREE from 'three';
-import { herringboneTexture, tileTexture } from './textures.js';
-import { addRealism } from './realism.js';
+import { tileTexture } from './textures.js';
 
 export const WALL_H = 2.9;          // 墙高
 export const EXT_T = 0.24;          // 外墙厚
@@ -21,7 +20,7 @@ export const ROOMS = [
 ];
 
 export const SPAWN = {
-  seeker: { pos: new THREE.Vector3(-8.6, 0, -2.5), yaw: -Math.PI / 2 }, // 别墅院子·正门外，面向屋门(+X)
+  seeker: { pos: new THREE.Vector3(-11.5, 0, -2.5), yaw: -Math.PI / 2 }, // 围墙西门门口，面向屋门(+X)
 };
 
 // ---------- 基础构件 ----------
@@ -199,9 +198,6 @@ export function buildVilla(scene, colliders) {
     l.position.set((r.minX + r.maxX) / 2, 2.55, (r.minZ + r.maxZ) / 2);
     scene.add(l);
   }
-
-  // 法式细部与软装：石膏线/踢脚线/灯槽/护墙板/窗帘/吊灯/相片墙（GLB 模式由 Blender 提供）
-  if (VISUALS) addRealism(scene);
 
   return { rooms: ROOMS, spawn: SPAWN, wallHeight: WALL_H };
 }

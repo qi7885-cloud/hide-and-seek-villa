@@ -45,6 +45,7 @@ export class PlacementUI {
 
   hide() {
     this.active = false;
+    clearTimeout(this._bookTimer);
     this._closePiece();
     this.stage = 'idle';
     this.helpEl.classList.add('hidden');
@@ -84,8 +85,10 @@ export class PlacementUI {
     const valid = [];
     piece.slots.forEach((slot) => {
       const occupied = !!slot.filledWith;
-      const tag = occupied ? '（已有东西）' : '';
-      if (!occupied) {
+      // 床底/沙发底等没有揭示动画的位置禁止藏入：藏了找家阶段永远拿不到
+      const unviewable = slot.type === 'under' && !this.interact.revealable(piece.def.id, slot.key);
+      const tag = occupied ? '（已有东西）' : unviewable ? '（无法查看）' : '';
+      if (!occupied && !unviewable) {
         valid.push(slot);
         html += `<button class="slot-btn ok" data-idx="${valid.length}"><b>${valid.length}</b>·${slot.name} · ${SLOT_LABELS[slot.type] || '藏点'}</button>`;
       } else {
@@ -138,7 +141,8 @@ export class PlacementUI {
         const book = this.aimedBook.proxy;
         this.interact.animateBook(book, 0.16, 0.4, -0.4);
         this.interact.remapBookEntry(this.piece.def.id, this.slot.key, this.aimedBook.index);
-        setTimeout(() => this.interact.animateBook(book, 0, 0.45, 0), 500);
+        clearTimeout(this._bookTimer);
+        this._bookTimer = setTimeout(() => this.interact.animateBook(book, 0, 0.45, 0), 500);
         this._toast(`「${item.name}」已夹进${this.aimedBook.name}！`);
       } else {
         this._toast(`「${item.name}」已藏进${this.piece.def.name}的${this.slot.name}！`);
@@ -147,11 +151,13 @@ export class PlacementUI {
       this.stage = 'slot';
       this.aimedBook = null;
       this._updateHelp();
-      this.openSlotPanelFor(this.piece);   // 回到选位置，可继续藏
       if (this.placedCount >= this.maxItems) {
-        this._toast(`已藏满 ${this.maxItems} 件，按 <b>G</b> 完成藏匿`);
+        // 已藏满：直接收面板，只提示一次
         this._closePanel();
+        this._toast(`已藏满 ${this.maxItems} 件，按 <b>G</b> 完成藏匿`);
+        return;
       }
+      this.openSlotPanelFor(this.piece);   // 回到选位置，可继续藏
     } else {
       this._toast(res.why);
     }
@@ -202,7 +208,8 @@ export class PlacementUI {
   update() {
     if (!this.active || this.stage !== 'book') return;
     const aim = this.interact.aimedBook();
-    if (aim !== this.aimedBook) {
+    // aimedBook() 每次返回新对象，按其中的书本代理比较，避免每帧重复触发动画
+    if (aim?.proxy !== this.aimedBook?.proxy) {
       if (this.aimedBook) this.interact.animateBook(this.aimedBook.proxy, 0, 0.2, 0);
       this.aimedBook = aim;
       if (aim) this.interact.animateBook(aim.proxy, 0.06, 0.2, -0.12);

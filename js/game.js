@@ -6,7 +6,7 @@ import { SFX } from './audio.js';
 export const Phase = { MENU: 'menu', HIDE: 'hide', COVER: 'cover', SEEK: 'seek', RESULT: 'result' };
 
 export class Game {
-  constructor(ctx, villa, pieces, interact, placement, player, godCam, avatar, pip) {
+  constructor(ctx, villa, pieces, interact, placement, player, godCam) {
     this.ctx = ctx;
     this.villa = villa;
     this.pieces = pieces;
@@ -14,8 +14,6 @@ export class Game {
     this.placement = placement;
     this.player = player;
     this.godCam = godCam;
-    this.avatar = avatar;
-    this.pip = pip;
 
     this.phase = Phase.MENU;
     this.settings = { rounds: 3, seekTime: 120, hints: true, hideCount: 2 };
@@ -28,7 +26,7 @@ export class Game {
 
     placement.onDone = () => this.confirmHide();
     placement.maxItems = this.settings.hideCount;
-    interact.onPickup = (userData) => this.onItemFound(userData);
+    interact.onPickup = (userData, mesh) => this.onItemFound(userData, mesh);
   }
 
   toast(msg) { if (this.onToast) this.onToast(msg); }
@@ -36,6 +34,7 @@ export class Game {
   // ---- 开始新一回合（藏家第一视角布置） ----
   startRound() {
     this.round++;
+    this.interact.resetRound();
     this.interact.clearAllItems();
     this.targets = [];
     this.placement.maxItems = this.settings.hideCount;
@@ -45,7 +44,6 @@ export class Game {
     this.player.teleport(this.villa.spawn.seeker.pos, this.villa.spawn.seeker.yaw);
     this.interact.enabled = false;
     this.interact.hideMode = true;
-    this.pip.enabled = false;
     this.placement.show();
     this._crosshair(true);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 藏家第一视角布置`);
@@ -86,8 +84,6 @@ export class Game {
     this.player.setLock(true);
     this.player.teleport(this.villa.spawn.seeker.pos, this.villa.spawn.seeker.yaw);
     this.interact.enabled = true;
-    // 画中画观战已取消：找家阶段不再显示藏家第三人称视角
-    this.pip.enabled = false;
     this._crosshair(true);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 限时搜索`);
     this._foundHud();
@@ -106,9 +102,9 @@ export class Game {
   }
 
   // ---- 找到一件 ----
-  onItemFound(userData) {
+  onItemFound(userData, mesh) {
     if (this.phase !== Phase.SEEK) return;
-    const mesh = this.interact.placedItems.find(m => m.userData.itemId === userData.itemId);
+    // 用射线实际命中的网格移除：同名物品重复藏匿时不会误删另一件
     if (mesh) this.interact.removeItem(mesh);
     const t = this.targets.find(t => t.itemId === userData.itemId && !t.found);
     if (t) t.found = true;
@@ -123,10 +119,10 @@ export class Game {
 
   // ---- 回合结束 ----
   _endRound(found) {
+    this.interact.resetRound();   // 退出检查特写并合上柜门，避免状态泄漏到下一回合
     this.interact.enabled = false;
     this.player.setLock(false);
     this.player.frozen = true;
-    this.pip.enabled = false;
     document.getElementById('timer').classList.add('hidden');
     document.getElementById('hint-chip').classList.add('hidden');
     document.getElementById('found-counter').classList.add('hidden');
@@ -186,13 +182,13 @@ export class Game {
 
   // ---- 退出本局回主菜单 ----
   quitToMenu() {
+    this.interact.resetRound();
     this.interact.clearAllItems();
     this.interact.enabled = false;
     this.interact.hideMode = false;
     this.placement.hide();
     this.player.setLock(false);
     this.player.frozen = true;
-    this.pip.enabled = false;
     this.godCam.enabled = true;
     this.godCam.autoRotate = true;
     this._setPhase(Phase.MENU);
@@ -224,6 +220,8 @@ export class Game {
       tEl.classList.toggle('urgent', this.timer < 20);
       const secLeft = Math.ceil(this.timer);
       if (this.timer <= 10 && secLeft !== this._lastTick) { this._lastTick = secLeft; SFX.tick(); }
+      // 超时结算（放在提示逻辑之前：关闭"距离提示"也能正常结束回合）
+      if (this.timer <= 0) { this._endRound(false); return; }
     }
 
     // 冷热提示：指向最近的未找到物品
@@ -251,7 +249,6 @@ export class Game {
         chip.classList.remove('hidden');
       }
     }
-    if (this.settings.seekTime && this.timer <= 0) this._endRound(false);
   }
 
   _foundHud() {

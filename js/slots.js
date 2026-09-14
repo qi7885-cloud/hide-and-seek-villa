@@ -1,11 +1,11 @@
 // slots.js — 槽位类型定义与"能不能藏进去"的校验规则
-// 槽位类型：interior=容器内部 under=家具底下 pages=书页间(需paper) behind=相框后(需thin)
+// 槽位类型：interior=容器内部 under=家具底下 pages=书页间(需paper)
 //           drawer=抽屉 soil=花盆土里 top=台面
 // cap: 槽位能容纳的最大尺寸[三轴]，校验时按三轴降序对比（方向无关）
 
 export const SLOT_LABELS = {
   interior: '内部', under: '底下', pages: '书页间',
-  behind: '后面', drawer: '抽屉', soil: '土里', top: '台面上',
+  drawer: '抽屉', soil: '土里', top: '台面上',
 };
 
 // 校验：返回 { ok, why }

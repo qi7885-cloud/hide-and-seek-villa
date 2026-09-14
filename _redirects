@@ -1,0 +1,7 @@
+# 屏蔽非网页文件（开发脚本与文档不应发布到公网）
+/server.js      /  404!
+/HANDOFF.md     /  404!
+/tools/*        /  404!
+/启动游戏.bat   /  404!
+/netlify.toml   /  404!
+/.gitignore     /  404!
