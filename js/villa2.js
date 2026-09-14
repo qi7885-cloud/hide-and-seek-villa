@@ -185,10 +185,9 @@ export function buildYard(scene, colliders) {
   const FX = 11.5, FZ = 8.5;   // 围栏范围 ±FX/±FZ
   const fenceMat = mat(0x9aa08e);
 
-  // 围栏（南面正中留大门 x -1.2..1.2）
-  const fenceRun = (axis, at, from, to) => {
-    const gap = axis === 'x' && at > 0 ? [-1.2, 1.2] : null;
-    const segs = gap ? [[from, gap[0]], [gap[1], to]] : [[from, to]];
+  // 围栏（西门在 z -3.1..-1.9，正对屋门 z=-2.5；南面封死）
+  const fenceRun = (axis, at, from, to, gate = null) => {
+    const segs = gate ? [[from, gate[0]], [gate[1], to]] : [[from, to]];
     for (const [a, b] of segs) {
       if (b - a < 0.1) continue;
       const mid = (a + b) / 2, len = b - a;
@@ -197,23 +196,22 @@ export function buildYard(scene, colliders) {
     }
     // 栅栏柱
     for (let p = from; p <= to; p += 2) {
-      if (gap && Math.abs(p) < 1.6) continue;
+      if (gate && p > gate[0] && p < gate[1]) continue;
       if (axis === 'x') box(scene, colliders, p, 0.62, at, 0.14, 1.24, 0.14, mat(0x8a9080), { collide: false });
       else box(scene, colliders, at, 0.62, p, 0.14, 1.24, 0.14, mat(0x8a9080), { collide: false });
     }
   };
   fenceRun('x', -FZ, -FX, FX);
   fenceRun('x', FZ, -FX, FX);
-  fenceRun('z', -FX, -FZ, FZ);
+  fenceRun('z', -FX, -FZ, FZ, [-3.1, -1.9]);   // 西门正对屋门
   fenceRun('z', FX, -FZ, FZ);
-  // 门柱
-  box(scene, colliders, -1.35, 0.7, FZ, 0.18, 1.4, 0.18, mat(0x7a806e));
-  box(scene, colliders, 1.35, 0.7, FZ, 0.18, 1.4, 0.18, mat(0x7a806e));
+  // 西门门柱
+  box(scene, colliders, -FX, 0.7, -3.25, 0.18, 1.4, 0.18, mat(0x7a806e));
+  box(scene, colliders, -FX, 0.7, -1.75, 0.18, 1.4, 0.18, mat(0x7a806e));
 
-  // 石板路（南门 → 正门，L形）
+  // 石板路（西门 → 正门，直线正对）
   const stone = mat(0xb5b0a4);
-  for (let i = 0; i < 6; i++) box(scene, colliders, 0, 0.035, 7.4 - i * 0.62, 1.0, 0.05, 0.5, stone, { collide: false });
-  for (let i = 0; i < 7; i++) box(scene, colliders, -0.8 - i * 0.75, 0.035, -2.5, 0.55, 0.05, 1.0, stone, { collide: false });
+  for (let i = 0; i < 4; i++) box(scene, colliders, -10.95 - i * 0.78, 0.035, -2.5, 0.55, 0.05, 1.0, stone, { collide: false });
 
   // 树木×3（树干+双层树冠）
   const tree = (tx, tz, s = 1) => {

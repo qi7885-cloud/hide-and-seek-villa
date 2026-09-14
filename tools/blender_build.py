@@ -764,6 +764,18 @@ def b_shelf_unit():
     reg(B(0.05, 1.8, 0.34, 0.46, 0.9, 0, M('wood_dark'), 'sideR', 0.006))
     for i, y in enumerate((0.04, 0.62, 1.2, 1.78)):
         reg(B(0.92, 0.045, 0.32, 0, y, 0, M('wood'), f'shelf{i}', 0.006))
+    # 层架上的日常用品（靠背板摆放，前方留出藏匿空间；底面贴合各层板顶）
+    # 下层：收纳纸箱
+    reg(B(0.24, 0.18, 0.18, -0.28, 0.1525, -0.06, M('card'), 'sbox1', 0.01))
+    reg(B(0.2, 0.14, 0.16, -0.02, 0.1325, -0.06, M('card_band'), 'sbox2', 0.01))
+    # 中层：洗护瓶×2 + 收纳盒
+    reg(CYL(0.045, 0.2, -0.3, 0.7425, -0.09, M('bowl_d'), 'bottle1', 14))
+    reg(CYL(0.035, 0.15, -0.2, 0.7175, -0.09, M('gold'), 'bottle2', 14))
+    reg(B(0.18, 0.12, 0.14, 0.22, 0.7025, -0.06, M('mailbox'), 'sbox3', 0.01))
+    # 上层：卷起的毯子 + 小盒
+    roll = CYL(0.07, 0.34, 0.15, 1.2925, -0.07, M('cream'), 'blanket_roll', 16)
+    roll.rotation_euler = (0, math.pi / 2, 0); _apply(roll); reg(roll)
+    reg(B(0.16, 0.1, 0.12, 0.35, 1.2725, -0.06, M('eraser'), 'sbox4', 0.01))
 
 def b_crate():
     # 开口纸箱：四壁+底（顶部翻盖），内部可藏
@@ -1271,9 +1283,8 @@ def build_upper_v():
 # ---------------------------------------------------------------- 庭院（yard.glb）
 def build_yard_v():
     FX, FZ = 11.5, 8.5
-    def fence_run(axis, at, from_, to_):
-        gap = (-1.2, 1.2) if (axis == 'x' and at > 0) else None
-        segs = [(from_, gap[0]), (gap[1], to_)] if gap else [(from_, to_)]
+    def fence_run(axis, at, from_, to_, gate=None):
+        segs = [(from_, gate[0]), (gate[1], to_)] if gate else [(from_, to_)]
         n = 0
         for a, b in segs:
             if b - a < 0.1: continue
@@ -1285,25 +1296,21 @@ def build_yard_v():
             n += 1
         p = from_
         while p <= to_:
-            if not (gap and abs(p) < 1.6):
+            if not (gate and gate[0] < p < gate[1]):
                 if axis == 'x':
                     reg(B(0.14, 1.24, 0.14, p, 0.62, at, M('fence_post'), f'fp{p:.0f}_{at:.0f}', 0.008))
                 else:
                     reg(B(0.14, 1.24, 0.14, at, 0.62, p, M('fence_post'), f'fp{at:.0f}_{p:.0f}', 0.008))
             p += 2
-    fence_run('x', -FZ, -FX, FX)
-    fence_run('x', FZ, -FX, FX)
-    fence_run('z', -FX, -FZ, FZ)
-    fence_run('z', FX, -FZ, FZ)
-    reg(B(0.18, 1.4, 0.18, -1.35, 0.7, FZ, M('fence_post'), 'gateL', 0.01))
-    reg(B(0.18, 1.4, 0.18, 1.35, 0.7, FZ, M('fence_post'), 'gateR', 0.01))
-    # 石板路（南门 → 沿南院墙向西 → 沿西院墙向南 → 正门，绕开别墅本体）
-    for i in range(3):
-        reg(B(1.0, 0.05, 0.5, 0, 0.035, 7.4 - i * 0.62, M('stone'), f'path{i}', 0.008))
-    for i in range(11):
-        reg(B(0.55, 0.05, 1.0, -0.6 - i * 0.78, 0.035, 6.4, M('stone'), f'pathW{i}', 0.008))
-    for i in range(10):
-        reg(B(0.55, 0.05, 1.0, -8.4, 0.035, 5.2 - i * 0.78, M('stone'), f'pathS{i}', 0.008))
+    fence_run('x', -FZ, -FX, FX)                                   # 南墙
+    fence_run('x', FZ, -FX, FX)                                    # 北墙
+    fence_run('z', -FX, -FZ, FZ, gate=(-3.1, -1.9))                # 西墙大门：正对屋门(z=-2.5)
+    fence_run('z', FX, -FZ, FZ)                                    # 东墙
+    reg(B(0.18, 1.4, 0.18, -FX, 0.7, -3.25, M('fence_post'), 'gateL', 0.01))
+    reg(B(0.18, 1.4, 0.18, -FX, 0.7, -1.75, M('fence_post'), 'gateR', 0.01))
+    # 石板路（西门 → 正门，直线正对）
+    for i in range(4):
+        reg(B(0.55, 0.05, 1.0, -10.95 - i * 0.78, 0.035, -2.5, M('stone'), f'path{i}', 0.008))
     # 树×3（有机树冠）
     def tree(key, tx, tz, s):
         reg(CONE(0.24 * s, 0.17 * s, 2.2 * s, tx, 1.1 * s, tz, M('bark'), f'{key}_trunk', 12))

@@ -632,7 +632,7 @@ export const CATALOG = [
   { id: 'beanBag', name: '懒人沙发', room: 'lounge2', pos: [-3.0, 3.15, -2.6], rotY: 0.4, build: beanBag, slots: [] },
 
   // —— 二楼 · 储物间（楼梯西侧，注意避开门洞 x>4.6, z<-4.55）——
-  { id: 'shelfUnit', name: '储物架', room: 'storage', pos: [6.9, 3.15, -2.2], rotY: -Math.PI / 2, build: shelfUnit,
+  { id: 'shelfUnit', name: '储物架', room: 'storage', pos: [7.32, 3.15, -2.2], rotY: -Math.PI / 2, build: shelfUnit,
     slots: [
       { key: 'low', type: 'interior', name: '下层格', cap: [0.8, 0.5, 0.26], offset: [0, 0.33, 0] },
       { key: 'mid', type: 'interior', name: '中层格', cap: [0.8, 0.5, 0.26], offset: [0, 0.91, 0] },
@@ -680,7 +680,7 @@ export const CATALOG = [
   // —— 庭院 ——
   { id: 'bench', name: '长椅', room: 'yard', pos: [4.5, 0, 6.6], rotY: Math.PI, build: bench,
     slots: [{ key: 'under', type: 'under', name: '椅面下', cap: [1.2, 0.16, 0.4], offset: [0, 0.2, 0] }] },
-  { id: 'mailbox', name: '信箱', room: 'yard', pos: [-1.6, 0, 7.7], rotY: Math.PI, build: mailbox,
+  { id: 'mailbox', name: '信箱', room: 'yard', pos: [-10.9, 0, -0.8], rotY: Math.PI / 2, build: mailbox,
     slots: [{ key: 'inner', type: 'interior', name: '信箱里', cap: [0.16, 0.12, 0.28], offset: [0, 1.085, 0] }] },
   { id: 'flowerbed', name: '花坛', room: 'yard', pos: [5.5, 0, 6.9], rotY: 0, build: flowerbed,
     slots: [{ key: 'soil', type: 'soil', name: '花坛土里', cap: [1.4, 0.06, 0.6], offset: [0, 0.26, 0] }] },
