@@ -21,7 +21,7 @@ export const ROOMS = [
 ];
 
 export const SPAWN = {
-  seeker: { pos: new THREE.Vector3(-6.2, 0, -2.5), yaw: -Math.PI / 2 }, // 玄关内，面向屋内(+X)
+  seeker: { pos: new THREE.Vector3(-8.6, 0, -2.5), yaw: -Math.PI / 2 }, // 别墅院子·正门外，面向屋门(+X)
 };
 
 // ---------- 基础构件 ----------
