@@ -428,13 +428,16 @@ def HOLLOW_TOP(w, h, d, x, y, z, mat, name, t=0.025):
 
 def DRAWER_BOX(w, h, d, x, y, z, front_z, mat_front, mat_body, name, t=0.02, handle_mat=None):
     """空心抽屉（顶口开放）：外观前板(位于 front_z) + 底/左右/后板 + 把手，中心(x,y,z)。
-    实心抽屉会让藏进去的物品不可见，故所有抽屉都用本结构。五面板+把手 join 为单一 part 对象，
-    把手随抽屉一起滑动。"""
+    侧/底板沿 z 一直延伸到前板背面，杜绝板间漏缝；五面板+把手 join 为单一 part 对象。"""
+    back0 = z - d / 2                       # 箱体后端面
+    front_back = front_z - 0.014            # 前板背面
+    depth = front_back - back0              # 侧/底板长度
+    center_z = (back0 + front_back) / 2
     front = B(w + 0.05, h + 0.04, 0.028, x, y, front_z, mat_front, name + '_front', 0.005)
-    bottom = B(w - 0.04, t, d - 0.06, x, y - h / 2 + t / 2, z, mat_body, name + '_bottom', 0.004)
-    left = B(t, h - 0.04, d - 0.06, x - w / 2 + t / 2, y, z, mat_body, name + '_left', 0.004)
-    right = B(t, h - 0.04, d - 0.06, x + w / 2 - t / 2, y, z, mat_body, name + '_right', 0.004)
-    back = B(w - 0.04, h - 0.04, t, x, y, z - d / 2 + t / 2, mat_body, name + '_back', 0.004)
+    bottom = B(w - 0.04, t, depth, x, y - h / 2 + t / 2, center_z, mat_body, name + '_bottom', 0.004)
+    left = B(t, h - 0.04, depth, x - w / 2 + t / 2, y, center_z, mat_body, name + '_left', 0.004)
+    right = B(t, h - 0.04, depth, x + w / 2 - t / 2, y, center_z, mat_body, name + '_right', 0.004)
+    back = B(w - 0.04, h - 0.04, t, x, y, back0 + t / 2, mat_body, name + '_back', 0.004)
     parts = [front, bottom, left, right, back]
     if handle_mat:
         parts.append(B(0.16, 0.03, 0.03, x, y, front_z + 0.022, handle_mat, name + '_handle', 0.005))
