@@ -531,10 +531,10 @@ export const CATALOG = [
   { id: 'tv', name: '电视', room: 'living', pos: [-5.75, 0.56, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
   { id: 'plant', name: '盆栽', room: 'living', pos: [-0.7, 0, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
-  { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-3.5, 0, -0.8], rotY: 0, build: floorLamp, slots: [] },
+  { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-1.25, 0, -0.3], rotY: 0, build: floorLamp, slots: [] },
   { id: 'shoeCabinet', name: '鞋柜', room: 'living', pos: [-7.3, 0, -0.8], rotY: Math.PI / 2, build: shoeCabinet,
     slots: [{ key: 'inner', type: 'interior', name: '鞋柜里', cap: [0.44, 0.95, 0.24], offset: [0, 0.505, 0] }] },
-  { id: 'sideTable', name: '边几', room: 'living', pos: [-4.1, 0, -0.5], rotY: 0, build: sideTable,
+  { id: 'sideTable', name: '边几', room: 'living', pos: [-1.85, 0, -0.75], rotY: 0, build: sideTable,
     slots: [{ key: 'top', type: 'top', name: '几面上', cap: [0.34, 0.18, 0.34], offset: [0, 0.46, 0] }] },
   { id: 'armchair', name: '休闲椅', room: 'living', pos: [-0.85, 0, -1.05], rotY: Math.PI / 2 + 0.5, build: armchair, slots: [] },
 
