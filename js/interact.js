@@ -19,7 +19,7 @@ const OPENABLE_DEFS = {
   counter: [
     { key: 'drawer1', part: 'drawer1', kind: 'slide', axis: 'z', open: 0.4 },
     { key: 'drawer2', part: 'drawer2', kind: 'slide', axis: 'z', open: 0.4 },
-    { key: 'cab', part: 'cabDoor', kind: 'hinge', hinge: [-0.96, 0.25, 0.315], axis: 'y', open: -1.8 },
+    { key: 'cab', part: 'cabDoor', kind: 'hinge', hinge: [-1.16, 0.25, 0.315], axis: 'y', open: -1.8 },
   ],
   wardrobe: [
     { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.575, 1.0, 0.315], axis: 'y', open: -1.8 },
@@ -30,10 +30,12 @@ const OPENABLE_DEFS = {
     { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.575, 1.0, 0.315], axis: 'y', open: 1.8 },
   ],
   nightstand: [
-    { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
+    { key: 'drawer1', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
+    { key: 'drawer2', part: 'drawer2', kind: 'slide', axis: 'z', open: 0.3 },
   ],
   nightstand2: [
-    { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
+    { key: 'drawer1', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
+    { key: 'drawer2', part: 'drawer2', kind: 'slide', axis: 'z', open: 0.3 },
   ],
   dresser: [
     { key: 'drawer1', part: 'drawer1', kind: 'slide', axis: 'z', open: 0.34 },
@@ -58,6 +60,9 @@ const OPENABLE_DEFS = {
   mailbox: [
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.12, 1.12, 0.2], axis: 'y', open: -1.9 },
   ],
+  microwave: [
+    { key: 'door', slots: ['inner'], part: 'door', kind: 'hinge', hinge: [-0.23, 0.15, 0.20], axis: 'y', open: -1.9 },
+  ],
   shoeCabinet: [
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.43, 0.55, 0.175], axis: 'y', open: -1.9 },
   ],
@@ -65,7 +70,8 @@ const OPENABLE_DEFS = {
     { key: 'inner', part: 'door', kind: 'hinge', hinge: [-0.47, 0.35, 0.165], axis: 'y', open: -1.9 },
   ],
   fileCabinet: [
-    { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.35 },
+    { key: 'drawer1', part: 'drawer', kind: 'slide', axis: 'z', open: 0.35 },
+    { key: 'drawer2', part: 'drawer2', kind: 'slide', axis: 'z', open: 0.35 },
   ],
   carpetL: [
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.42, hinge: [0, 0, 0.9] },
@@ -74,12 +80,10 @@ const OPENABLE_DEFS = {
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.5, hinge: [0, 0, 0.5] },
   ],
   bookshelf: [
-    { key: 'pages1', part: 'books:3', kind: 'book' },
-    { key: 'pages2', part: 'books:14', kind: 'book' },
+    { key: 'books', part: 'books:*', kind: 'book' },
   ],
   bookshelf2: [
-    { key: 'pages1', part: 'books:3', kind: 'book' },
-    { key: 'pages2', part: 'books:14', kind: 'book' },
+    { key: 'books', part: 'books:*', kind: 'book' },
   ],
 };
 
@@ -93,9 +97,10 @@ export class Interaction {
     this.raycaster.far = 2.6;
     this.openEntries = [];       // 所有开合动画条目
     this.openBySlotKey = {};     // pieceId:slotKey -> entry
+    this._entryByNode = new Map(); // 开合部件节点 -> entry（准星判定用）
+    this.onEntryToggle = null;   // (entry, open) 开合意图回调（main.js 接音效）
     this.placedItems = [];       // 已藏物品网格
     this.dropAnims = [];         // 放入动作动画 [{mesh, from, to, t}]
-    this.bookTweens = [];        // 书本抽出/放回动画 [{proxy, from, to, t, dur, tilt}]
     this.inspecting = null;      // 检查特写状态
     this.promptEl = document.getElementById('interact-prompt');
     this.enabled = false;        // 找家阶段才启用 E 交互
@@ -117,9 +122,24 @@ export class Interaction {
     for (const piece of this.pieces) {
       const defs = OPENABLE_DEFS[piece.def.id] || [];
       for (const d of defs) {
+        // 书架：每本书各自成为可开合条目（精确瞄准某本书抽出）
+        if (d.part === 'books:*') {
+          const books = (piece.parts.books || []).filter(Boolean);
+          for (let bi = 0; bi < books.length; bi++) {
+            const node = books[bi];
+            const entry = {
+              pieceId: piece.def.id, key: `book:${bi}`, slotKeys: [],
+              kind: 'book', axis: null, open: null, node,
+              t: 0, target: 0, speed: 2.2,
+              base: node.position.clone(), pivot: null,
+            };
+            this.openEntries.push(entry);
+            this._entryByNode.set(node, entry);
+          }
+          continue;
+        }
         let node;
         if (d.part === '__group') node = piece.group;
-        else if (d.part.startsWith('books:')) node = piece.parts.books[+d.part.split(':')[1]];
         else node = piece.parts[d.part];
         if (!node) continue;
 
@@ -155,6 +175,7 @@ export class Interaction {
           }
         }
         this.openEntries.push(entry);
+        this._entryByNode.set(entry.node, entry);
         for (const sk of entry.slotKeys) this.openBySlotKey[`${piece.def.id}:${sk}`] = entry;
       }
     }
@@ -170,6 +191,15 @@ export class Interaction {
 
   _bindKeys() {
     this._onKey = (e) => {
+      if (e.repeat) return;   // 按住不连发（E 开一次，Q 关一次）
+      if (e.code === 'KeyQ') {
+        if (this.hideMode || !this.enabled || this.inspecting) return;
+        // Q：关上当前打开的抽屉/书本（全局同时只开一个）
+        for (const en of this.openEntries) {
+          if ((en.kind === 'slide' || en.kind === 'book') && en.target === 1) this._setTarget(en, false);
+        }
+        return;
+      }
       if (e.code !== 'KeyE') return;
       if (this.hideMode) { this._act(); return; }
       if (!this.enabled) return;
@@ -194,15 +224,6 @@ export class Interaction {
       const k = a.t * a.t * (3 - 2 * a.t);
       a.mesh.position.lerpVectors(a.from, a.to, k);
       if (a.t >= 1) this.dropAnims.splice(i, 1);
-    }
-    // 书本抽出/放回动画
-    for (let i = this.bookTweens.length - 1; i >= 0; i--) {
-      const b = this.bookTweens[i];
-      b.t = Math.min(1, b.t + dt / b.dur);
-      const k = b.t * b.t * (3 - 2 * b.t);
-      b.proxy.position.z = b.from + (b.to - b.from) * k;
-      b.proxy.rotation.x = b.tilt * k;
-      if (b.t >= 1) this.bookTweens.splice(i, 1);
     }
     if (this.inspecting) this._updateInspect(dt);
     else this._raycastPrompt();
@@ -234,17 +255,85 @@ export class Interaction {
         }
       }
     } else if (e.kind === 'book') {
-      e.node.position.z = e.base.z + 0.1 * k;
-      e.node.rotation.x = -0.55 * k;
+      e.node.position.z = e.base.z + 0.16 * k;
+      e.node.rotation.x = -0.6 * k;
     }
   }
 
-  togglePiece(pieceId, open = null) {
+  // 开合意图统一入口：更新目标并通知（main.js 接音效）
+  _setTarget(e, open, notify = true) {
+    const v = open ? 1 : 0;
+    if (e.target === v) return;
+    e.target = v;
+    if (notify && this.onEntryToggle) this.onEntryToggle(e, !!open);
+  }
+
+  // 抽屉/书本全局单开：开 entry 前先合上其他所有已开的抽屉与书本
+  openSolo(entry) {
+    for (const e of this.openEntries) {
+      if (e === entry) continue;
+      if ((e.kind === 'slide' || e.kind === 'book') && e.target === 1) this._setTarget(e, false);
+    }
+    this._setTarget(entry, true);
+  }
+
+  // 合上某件家具的所有开合部件（放置面板关闭时用）
+  closePiece(pieceId) {
+    for (const e of this.openEntries) {
+      if (e.pieceId === pieceId) this._setTarget(e, false);
+    }
+  }
+
+  // 放置面板打开时的联动：瞄准抽屉/书只开它（柜门不动）；
+  // 无瞄准或瞄准柜门时开柜门/盖子（双门联动）；单抽屉家具无瞄准时拉唯一抽屉
+  focusPiece(pieceId, aimedEntry = null) {
     const entries = this.openEntries.filter(e => e.pieceId === pieceId);
+    if (aimedEntry && (aimedEntry.kind === 'slide' || aimedEntry.kind === 'book')) {
+      this.openSolo(aimedEntry);
+      return;
+    }
+    const doors = entries.filter(e => e.kind === 'hinge' || e.kind === 'lift');
+    if (doors.length) {
+      for (const e of doors) this._setTarget(e, true);
+      return;
+    }
+    const slides = entries.filter(e => e.kind === 'slide');
+    if (slides.length === 1) this.openSolo(slides[0]);
+  }
+
+  // 准星命中的具体开合部件（抽屉把手所在面/某本书）：沿父链找 entry
+  _aimedEntry(hit) {
+    if (!hit || hit.type !== 'piece') return null;
+    for (let o = hit.object; o; o = o.parent) {
+      const e = this._entryByNode.get(o);
+      if (e && e.pieceId === hit.piece.def.id) return e;
+      if (o === hit.piece.group) break;
+    }
+    return null;
+  }
+
+  // 槽位对应的开合条目
+  entryForSlot(pieceId, slotKey) {
+    return this.openBySlotKey[`${pieceId}:${slotKey}`] || null;
+  }
+
+  // 按书本代理开/合（placement 瞄准预览与藏匿动画用；开遵循全局单开）
+  openBook(proxy) {
+    const e = this._entryByNode.get(proxy);
+    if (e) this.openSolo(e);
+  }
+
+  closeBook(proxy) {
+    const e = this._entryByNode.get(proxy);
+    if (e) this._setTarget(e, false);
+  }
+
+  togglePiece(pieceId, open = null) {
+    const entries = this.openEntries.filter(e => e.pieceId === pieceId && e.kind !== 'slide' && e.kind !== 'book');
     if (!entries.length) return false;
     const anyClosed = entries.some(e => e.target === 0);
     const to = open === null ? anyClosed : open;
-    for (const e of entries) e.target = to ? 1 : 0;
+    for (const e of entries) this._setTarget(e, to);
     return true;
   }
 
@@ -271,59 +360,58 @@ export class Interaction {
     // 沿父链找归属
     let o = h.object;
     while (o) {
-      if (o.userData.isTargetItem) return { type: 'item', mesh: o, dist: h.distance };
+      if (o.userData.isTargetItem) return { type: 'item', mesh: o, dist: h.distance, object: h.object };
       if (o.userData.pieceId) {
         const piece = this.pieces.find(p => p.def.id === o.userData.pieceId);
-        if (piece) return { type: 'piece', piece, dist: h.distance };
+        if (piece) return { type: 'piece', piece, dist: h.distance, object: h.object };
       }
       o = o.parent;
     }
     return null;
   }
 
-  // 准星正对的书本（书架动态藏匿用）：返回 {index, proxy, name} 或 null
-  aimedBook() {
+  // 准星正对的书本：返回 {piece, index, proxy, name} 或 null
+  // piece 省略时在所有书架上找（placement 书页间瞄准用）
+  aimedBook(piece = null) {
     const cam = this.ctx.camera;
     this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
-    const piece = this.pieces.find(p => p.def.id === 'bookshelf');
-    if (!piece || !piece.parts.books) return null;
-    const books = piece.parts.books.filter(Boolean);
-    const hits = this.raycaster.intersectObjects(books, true);
-    if (!hits.length) return null;
-    // 沿父链向上找到 part_book_NN 前缀名，再到 books 数组里按名匹配（跨包装层）
-    let o = hits[0].object;
-    let base = null;
-    while (o) {
-      if (o.name && o.name.startsWith('part_book_')) {
-        // 取最外层（最短的）part_book_NN 名字
-        if (!base || o.name.length < base.length) base = o.name;
+    const shelves = (piece && piece.parts.books?.length) ? [piece]
+      : this.pieces.filter(p => p.parts.books?.length);
+    for (const shelf of shelves) {
+      const books = shelf.parts.books.filter(Boolean);
+      if (!books.length) continue;
+      const hits = this.raycaster.intersectObjects(books, true);
+      if (!hits.length) continue;
+      // 沿父链向上找到 part_book_NN 前缀名，再到 books 数组里按名匹配（跨包装层）
+      let o = hits[0].object;
+      let base = null;
+      while (o) {
+        if (o.name && o.name.startsWith('part_book_')) {
+          // 取最外层（最短的）part_book_NN 名字
+          if (!base || o.name.length < base.length) base = o.name;
+        }
+        o = o.parent;
       }
-      o = o.parent;
+      if (!base) continue;
+      const key = base.split('__')[0];                      // 'part_book_25'
+      const idx = books.findIndex(b => b.name === key || b.name.split('__')[0] === key);
+      if (idx < 0) continue;
+      return { piece: shelf, index: idx, proxy: books[idx], name: `Vol.${idx + 1}` };
     }
-    if (!base) return null;
-    const key = base.split('__')[0];                      // 'part_book_25'
-    const idx = books.findIndex(b => b.name === key || b.name.split('__')[0] === key);
-    if (idx < 0) return null;
-    return { index: idx, proxy: books[idx], name: `Vol.${idx + 1}` };
-  }
-
-  // 书页间槽位的动态书本列表（供面板提示可藏书册）
-  bookList() {
-    const piece = this.pieces.find(p => p.def.id === 'bookshelf');
-    return piece?.parts.books?.filter(Boolean) ?? [];
-  }
-
-  // 书本抽出/放回动画：delta 相对书本原位（原位记录在 userData.baseZ）
-  animateBook(proxy, delta, dur = 0.35, tilt = -0.35) {
-    if (proxy.userData.baseZ === undefined) proxy.userData.baseZ = proxy.position.z;
-    this.bookTweens = this.bookTweens.filter(b => b.proxy !== proxy);
-    this.bookTweens.push({ proxy, from: proxy.position.z, to: proxy.userData.baseZ + delta, t: 0, dur, tilt });
+    return null;
   }
 
   // 容器已打开时，其中的物品视为可直接拿取（抽屉/冰箱/柜门/掀开的地毯/抽出的书）
   _exposedPickable(piece) {
     return piece.slots.find(s => {
       if (!s.filledWith) return false;
+      if (s.type === 'pages') {
+        // 书页间：藏入的书（slot.bookIndex）被抽出时才可拿取
+        if (s.bookIndex == null) return false;
+        const book = piece.parts.books?.[s.bookIndex];
+        const e = book && this._entryByNode.get(book);
+        return !!(e && e.t > 0.7);
+      }
       const e = this.openBySlotKey[`${piece.def.id}:${s.key}`];
       return e && e.t > 0.7;
     });
@@ -345,22 +433,40 @@ export class Interaction {
         text = `按 <b>E</b> 拿起「${itemById(hit.mesh.userData.itemId)?.name ?? '?'}」`;
       } else if (this.hideMode) {
         if (hit.type === 'piece') {
-          text = hit.piece.slots.length
-            ? `「${hit.piece.def.name}」—— 按 <b>E</b> 打开藏匿面板`
-            : `「${hit.piece.def.name}」没有可藏位置`;
+          const entry = this._aimedEntry(hit);
+          if (entry?.kind === 'book') {
+            text = `「Vol.${parseInt(entry.key.slice(5)) + 1}」—— 按 <b>E</b> 打开书本藏物`;
+          } else if (entry?.kind === 'slide') {
+            const slot = hit.piece.slots.find(s => s.key === entry.slotKeys[0]);
+            text = `「${hit.piece.def.name} · ${slot?.name ?? '抽屉'}」—— 按 <b>E</b> 打开藏匿面板`;
+          } else if (hit.piece.slots.length) {
+            text = `「${hit.piece.def.name}」—— 按 <b>E</b> 打开藏匿面板`;
+          } else {
+            text = `「${hit.piece.def.name}」没有可藏位置`;
+          }
         }
       } else {
         const slot = this._exposedPickable(hit.piece);
-        const hasOpenable = this.openEntries.some(e => e.pieceId === hit.piece.def.id);
         if (slot) {
           text = `按 <b>E</b> 拿起「${itemById(slot.filledWith).name}」`;
-        } else if (hasOpenable) {
-          const anyClosed = this.openEntries.some(e => e.pieceId === hit.piece.def.id && e.target === 0);
-          text = `${hit.piece.def.name} —— 按 <b>E</b> ${anyClosed ? '打开' : '关上'}`;
-        } else if (hit.piece.slots.some(s => s.type === 'interior' || s.type === 'soil')) {
-          text = `按 <b>E</b> 检查${hit.piece.def.name}`;
         } else {
-          text = hit.piece.def.name;
+          const entry = this._aimedEntry(hit);
+          if (entry && (entry.kind === 'slide' || entry.kind === 'book')) {
+            // 抽屉/书本：精确到准星所在的那个
+            const label = entry.kind === 'book'
+              ? `Vol.${parseInt(entry.key.slice(5)) + 1}`
+              : `${hit.piece.def.name} · ${hit.piece.slots.find(s => s.key === entry.slotKeys[0])?.name ?? '抽屉'}`;
+            text = entry.target === 1
+              ? `${label} —— 按 <b>E/Q</b> 关上`
+              : `${label} —— 按 <b>E</b> 打开`;
+          } else if (this.openEntries.some(e => e.pieceId === hit.piece.def.id && e.kind !== 'slide' && e.kind !== 'book')) {
+            const anyClosed = this.openEntries.some(e => e.pieceId === hit.piece.def.id && e.kind !== 'slide' && e.kind !== 'book' && e.target === 0);
+            text = `${hit.piece.def.name} —— 按 <b>E</b> ${anyClosed ? '打开' : '关上'}`;
+          } else if (hit.piece.slots.some(s => s.type === 'interior' || s.type === 'soil')) {
+            text = `按 <b>E</b> 检查${hit.piece.def.name}`;
+          } else {
+            text = hit.piece.def.name;
+          }
         }
       }
     }
@@ -405,11 +511,17 @@ export class Interaction {
   }
 
   _act() {
-    // 藏家藏匿模式：E 在家具上打开槽位面板
+    // 藏家藏匿模式：E 在家具上打开槽位面板；正对书本则直接打开那本书进入藏物
     if (this.hideMode) {
       const hit = this._lastHit;
-      if (hit && hit.type === 'piece' && hit.piece.slots.length && this.onHideInteract) {
-        this.onHideInteract(hit.piece);
+      if (hit && hit.type === 'piece' && hit.dist < 2.5) {
+        if (hit.piece.parts.books?.length) {
+          const book = this.aimedBook(hit.piece);
+          if (book && this.onHideBook) { this.onHideBook(hit.piece, book); return; }
+        }
+        if (hit.piece.slots.length && this.onHideInteract) {
+          this.onHideInteract(hit.piece, this._aimedEntry(hit));
+        }
       }
       return;
     }
@@ -436,9 +548,16 @@ export class Interaction {
       if (mesh && this.onPickup) this.onPickup(mesh.userData, mesh);
       return;
     }
-    // 先尝试开合（柜门/抽屉/地毯/书本）
+    // 抽屉/书本：准星落在哪个部件上就只开合那一个（全局同时只开一个）
+    const entry = this._aimedEntry(hit);
+    if (entry && (entry.kind === 'slide' || entry.kind === 'book')) {
+      if (entry.target === 1) this._setTarget(entry, false);
+      else this.openSolo(entry);
+      return;
+    }
+    // 再尝试开合柜门/盖子（双门联动）
     if (this.togglePiece(hit.piece.def.id)) return;
-    // 再尝试检查直视容器（杯/盘/桶/盆栽/储物架等）
+    // 最后尝试检查直视容器（杯/盘/桶/盆栽/储物架等）
     const interiors = hit.piece.slots.filter(s => s.type === 'interior' || s.type === 'soil');
     if (interiors.length) {
       // 多藏格的家具（如储物架）：优先检查已藏了东西的那格
@@ -475,7 +594,8 @@ export class Interaction {
       const book = piece.parts.books[extra.bookIndex];
       if (!book) return { ok: false, why: '书本不存在' };
       book.updateMatrixWorld(true);
-      const baseZ = book.userData.baseZ ?? book.position.z;
+      const e = this._entryByNode.get(book);
+      const baseZ = e ? e.base.z : (book.userData.baseZ ?? book.position.z);
       const rest = new THREE.Vector3(book.position.x, book.position.y, baseZ)
         .applyMatrix4(book.parent.matrixWorld);
       mesh.rotation.z = Math.PI / 2;
@@ -501,18 +621,6 @@ export class Interaction {
     slot.filledWith = itemId;
     if (extra.bookIndex != null) slot.bookIndex = extra.bookIndex;
     return { ok: true };
-  }
-
-  // 藏匿时把物品藏进第 b 本书后，让找家阶段的开合指向那本书
-  remapBookEntry(pieceId, slotKey, bookIndex) {
-    const entry = this.openBySlotKey[`${pieceId}:${slotKey}`];
-    const piece = this.pieces.find(p => p.def.id === pieceId);
-    const book = piece?.parts.books?.[bookIndex];
-    if (entry && book) {
-      entry.node = book;
-      const baseZ = book.userData.baseZ ?? book.position.z;
-      entry.base = new THREE.Vector3(book.position.x, book.position.y, baseZ);
-    }
   }
 
   removeItem(mesh) {

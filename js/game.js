@@ -88,7 +88,7 @@ export class Game {
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 限时搜索`);
     this._foundHud();
     this._helpBar(`【找家】<b>WASD</b> 移动 <span class="hb-sep">|</span> <b>Shift</b> 跑 <span class="hb-sep">|</span> ` +
-      `<b>E</b> 开门/检查/拿取 <span class="hb-sep">|</span> <b>Esc</b> 退出本局 <span class="hb-sep">|</span> ` +
+      `<b>E</b> 开门·抽屉·书本·拿取 <b>Q</b> 关上抽屉 <span class="hb-sep">|</span> <b>Esc</b> 退出本局 <span class="hb-sep">|</span> ` +
       `规则：找出藏家藏的全部 <b>${this.targets.length}</b> 件物品`);
     this.toast(`你是找家！共有 ${this.targets.length} 件物品等着你找`);
   }

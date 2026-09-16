@@ -426,21 +426,26 @@ def HOLLOW_TOP(w, h, d, x, y, z, mat, name, t=0.025):
     reg(B(w - 2 * t, h, t, x, y, z + d / 2 - t / 2, mat, name + '_front', 0.004))
     reg(B(w - 2 * t, t, d - 2 * t, x, y - h / 2 + t / 2, z, mat, name + '_bottom', 0.004))
 
-def DRAWER_BOX(w, h, d, x, y, z, front_z, mat_front, mat_body, name, t=0.02, handle_mat=None):
+def DRAWER_BOX(w, h, d, x, y, z, front_z, mat_front, mat_body, name, t=0.02, handle_mat=None,
+               front_w=None, front_h=None, front_dx=0, front_dy=0):
     """空心抽屉（顶口开放）：外观前板(位于 front_z) + 底/左右/后板 + 把手，中心(x,y,z)。
-    侧/底板沿 z 一直延伸到前板背面，杜绝板间漏缝；五面板+把手 join 为单一 part 对象。"""
+    侧/底板沿 z 一直延伸到前板背面，杜绝板间漏缝；五面板+把手 join 为单一 part 对象。
+    front_w/front_h/front_dx/front_dy：前板尺寸与中心偏移（铺满柜体开口用，默认略大于箱体）。"""
     back0 = z - d / 2                       # 箱体后端面
     front_back = front_z - 0.014            # 前板背面
     depth = front_back - back0              # 侧/底板长度
     center_z = (back0 + front_back) / 2
-    front = B(w + 0.05, h + 0.04, 0.028, x, y, front_z, mat_front, name + '_front', 0.005)
+    fw = front_w if front_w is not None else w + 0.05
+    fh = front_h if front_h is not None else h + 0.04
+    fx, fy = x + front_dx, y + front_dy
+    front = B(fw, fh, 0.028, fx, fy, front_z, mat_front, name + '_front', 0.005)
     bottom = B(w - 0.04, t, depth, x, y - h / 2 + t / 2, center_z, mat_body, name + '_bottom', 0.004)
     left = B(t, h - 0.04, depth, x - w / 2 + t / 2, y, center_z, mat_body, name + '_left', 0.004)
     right = B(t, h - 0.04, depth, x + w / 2 - t / 2, y, center_z, mat_body, name + '_right', 0.004)
     back = B(w - 0.04, h - 0.04, t, x, y, back0 + t / 2, mat_body, name + '_back', 0.004)
     parts = [front, bottom, left, right, back]
     if handle_mat:
-        parts.append(B(0.16, 0.03, 0.03, x, y, front_z + 0.022, handle_mat, name + '_handle', 0.005))
+        parts.append(B(0.16, 0.03, 0.03, fx, fy, front_z + 0.022, handle_mat, name + '_handle', 0.005))
     reg(join(parts, name))
 
 def DISPLACED_SPH(r, x, y, z, mat, name, amp=0.16, seed=0):
@@ -577,13 +582,15 @@ def b_counter():
     reg(CYL(0.02, 0.24, -0.6, 1.0, -0.22, M('steel'), 'faucet', 16))
     sp = CYL(0.015, 0.16, -0.6, 1.11, -0.15, M('steel'), 'spout', 14)
     sp.rotation_euler = (math.pi / 2, 0, 0); _apply(sp); reg(sp)
-    # 抽屉×2（空心，滑出可见内部，把手随动）
-    for i, dx in enumerate((-0.6, 0.25)):
+    # 抽屉×2（空心，滑出可见内部，把手随动）；前板加高加宽铺满立柱，
+    # 上缘塞进台面底、下缘接柜门顶、中缝对齐隔板——杜绝看进柜体的缝隙
+    for i, (dx, fw, fdx) in enumerate(((-0.6, 1.0, -0.075), (0.25, 0.79, -0.0275))):
         DRAWER_BOX(0.67, 0.15, 0.5, dx, 0.665, 0.0, 0.283, M('wood'), M('wood_body'), f'part_drawer{i+1}',
-                   handle_mat=M('dark'))
-    reg(join([B(0.72, 0.5, 0.03, -0.6, 0.25, 0.315, M('wood'), 'd', 0.006),
-              B(0.12, 0.025, 0.025, -0.6, 0.25, 0.34, M('dark'), 'h')], 'part_cabDoor'))
-    reg(B(0.72, 0.5, 0.56, 0.25, 0.25, 0, M('wood_dark'), 'openbox', 0.006))
+                   handle_mat=M('dark'), front_w=fw, front_h=0.36, front_dy=0.0075, front_dx=fdx)
+    reg(join([B(0.97, 0.5, 0.03, -0.68, 0.25, 0.315, M('wood'), 'd', 0.006),
+              B(0.12, 0.025, 0.025, -0.25, 0.25, 0.34, M('dark'), 'h')], 'part_cabDoor'))
+    reg(B(0.815, 0.5, 0.56, 0.2075, 0.25, 0, M('wood_dark'), 'openbox', 0.006))   # 左缘延到柜门背后, 消门板间黑洞
+    reg(B(0.55, 0.86, 0.03, 0.885, 0.43, 0.30, M('wood'), 'front_right', 0.006))   # 右端封板
 
 def b_fridge():
     # 空心箱体 + 冷冻/冷藏隔板 + 内置玻璃层架（门从把手侧向外开，把手装在自由缘）
@@ -619,9 +626,11 @@ def b_fruit_bowl():
     reg(SPH(0.04, -0.06, 0.045, -0.05, M('fruit2'), 'f2', 14, 10))
 
 def b_microwave():
-    reg(B(0.5, 0.3, 0.38, 0, 0.15, 0, M('dark'), 'body', 0.012))
-    reg(B(0.4, 0.22, 0.012, -0.03, 0.16, 0.192, M('pc_glass'), 'window', 0.004))
-    reg(B(0.04, 0.16, 0.03, 0.21, 0.16, 0.2, M('steel'), 'handle', 0.006))
+    # 空心炉腔（内部可藏物）+ 可开门（左铰链、玻璃窗、右缘把手）
+    HOLLOW(0.5, 0.3, 0.38, 0, 0.15, 0, M('dark'), 'mw_body', t=0.02)
+    reg(join([B(0.46, 0.26, 0.022, 0, 0.15, 0.201, M('dark'), 'd', 0.006),
+              B(0.34, 0.17, 0.01, -0.03, 0.15, 0.209, M('pc_glass'), 'g', 0.004),
+              B(0.035, 0.16, 0.028, 0.195, 0.15, 0.212, M('steel'), 'h', 0.006)], 'part_door'))
 
 def b_trash_bin():
     reg(TUBE(0.155, 0.13, 0.42, 0, 0.21, 0, M('steel_dark'), 'wall', 20))
@@ -644,6 +653,8 @@ def b_bed():
 def b_nightstand():
     reg(B(0.45, 0.5, 0.4, 0, 0.28, 0, M('wood'), 'body', 0.008))
     DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.38, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer',
+               handle_mat=M('dark'))
+    DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.19, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer2',
                handle_mat=M('dark'))
 
 def b_wardrobe():
@@ -854,9 +865,21 @@ def b_wall_cabinet():
 
 def b_file_cabinet():
     reg(B(0.45, 0.6, 0.45, 0, 0.3, 0, M('wood_dark'), 'body', 0.008))
-    reg(B(0.4, 0.2, 0.028, 0, 0.15, 0.228, M('wood'), 'front_lower', 0.006))
     DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.42, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer',
                handle_mat=M('steel'))
+    DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.155, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer2',
+               handle_mat=M('steel'))
+
+def b_kettle():
+    # 台面水壶（独立装饰件，可被瞄准命名）
+    reg(CYL(0.085, 0.16, 0, 0.08, 0, M('steel'), 'body', 20))
+    reg(CYL(0.05, 0.02, 0, 0.17, 0, M('steel_dark'), 'lid', 16))
+    sp = CYL(0.014, 0.1, -0.08, 0.09, 0.06, M('steel'), 'spout', 10)
+    sp.rotation_euler = (0, 0, math.pi / 4); _apply(sp); reg(sp)
+    reg(TORUS(0.06, 0.008, 0.09, 0.12, 0, M('dark'), 'handle', rot_bl=(math.pi / 2, 0, 0)))
+
+def b_board():
+    reg(B(0.35, 0.018, 0.25, 0, 0.009, 0, M('wood_light'), 'board', 0.006))
 
 def b_bean_bag():
     o = SPH(0.45, 0, 0.31, 0, M('teddy'), 'bag', 24, 18)
@@ -901,21 +924,24 @@ PIECE_BUILDERS = {
     'mailbox': b_mailbox, 'flowerbed': b_flowerbed,
     'shoe_cabinet': b_shoe_cabinet, 'side_table': b_side_table, 'wall_cabinet': b_wall_cabinet,
     'file_cabinet': b_file_cabinet, 'bean_bag': b_bean_bag, 'backpack': b_backpack,
+    'kettle': b_kettle, 'board': b_board,
     'bucket': b_bucket, 'planter': b_planter,
 }
 
 # ---------------------------------------------------------------- 别墅结构（villa.glb，世界坐标）
-def wall_v(key, axis, at, from_, to_, thickness, mat, openings=(), yBase=0):
-    """带开口的墙（视觉版，无碰撞——碰撞由游戏端 villa.js 负责）；yBase=墙底高度"""
+def wall_v(key, axis, at, from_, to_, thickness, mat, openings=(), yBase=0, height=None):
+    """带开口的墙（视觉版，无碰撞——碰撞由游戏端 villa.js 负责）；yBase=墙底高度，
+    height=墙顶高度（相对 yBase，默认 WALL_H 全高）"""
+    top = WALL_H if height is None else height
     segs, cur = [], from_
     for op in sorted(openings, key=lambda o: o['at']):
         a0, a1 = op['at'] - op['w'] / 2, op['at'] + op['w'] / 2
-        if a0 > cur: segs.append((cur, a0, 0, WALL_H))
-        y0, y1 = op.get('y0', 0), op.get('y1', WALL_H)
+        if a0 > cur: segs.append((cur, a0, 0, top))
+        y0, y1 = op.get('y0', 0), op.get('y1', top)
         if y0 > 0: segs.append((a0, a1, 0, y0))
-        if y1 < WALL_H: segs.append((a0, a1, y1, WALL_H))
+        if y1 < top: segs.append((a0, a1, y1, top))
         cur = a1
-    if cur < to_: segs.append((cur, to_, 0, WALL_H))
+    if cur < to_: segs.append((cur, to_, 0, top))
     objs = []
     for i, (a, b, y0, y1) in enumerate(segs):
         if b - a <= 0.002: continue
@@ -1169,14 +1195,7 @@ def build_villa_v():
     bubble_lamp_v('bub', 3.4, WALL_H - 0.55, -2.3)
     # 厨房挡水板（止于窗缘，不遮挡东窗）
     reg(B(0.03, 0.6, 1.4, 7.5 - 0.05 - 0.015, 1.2, -4.2, M('trim'), 'backsplash', 0.004))
-    # ---- 装饰小物（增加生活气息，无碰撞）----
-    # 厨房台面：水壶 + 砧板
-    reg(CYL(0.085, 0.16, 6.85, 0.99, -2.7, M('steel'), 'kettle', 20))
-    reg(CYL(0.05, 0.02, 6.85, 1.08, -2.7, M('steel_dark'), 'kettle_lid', 16))
-    sp = CYL(0.014, 0.1, 6.77, 1.0, -2.64, M('steel'), 'kettle_spout', 10)
-    sp.rotation_euler = (0, 0, math.pi / 4); _apply(sp); reg(sp)
-    reg(TORUS(0.06, 0.008, 6.94, 1.03, -2.7, M('dark'), 'kettle_handle', rot_bl=(math.pi / 2, 0, 0)))
-    reg(B(0.35, 0.018, 0.25, 6.85, 0.911, -4.75, M('wood_light'), 'board', 0.006))
+    # ---- 装饰小物（增加生活气息，无碰撞）——水壶/砧板已升级为独立家具件 ----
     # 客厅北墙：挂钟
     rim = CYL(0.16, 0.03, -2.0, 2.2, -5.44, M('wood_dark'), 'clock_rim', 24)
     rim.rotation_euler = (math.pi / 2, 0, 0); _apply(rim); reg(rim)
@@ -1256,9 +1275,9 @@ def build_upper_v():
            M('wood_dark'), 'handrail', 0.006)
     hr.rotation_euler = (0, -math.atan2(y1c - y0c, x1c - x0c), 0)
     _apply(hr); reg(hr)
-    # 楼梯井南侧实体墙（x 0.1..6.45，从二楼楼板到顶）——上楼梯到顶正对墙面，
-    # 同时挡住从储物间跌落楼梯井；东段 6.45..7.5 留空作为落地进入储物间的出口
-    wall_v('f2_stair_wall', 'x', -4.55, 0.1, 6.45, 0.1, M('plaster_int'), [], yBase=F2)
+    # 楼梯井南侧半墙（x 0.1..6.45，高1.35——比健身房器械略高，可探看楼梯井）——
+    # 仍挡住从储物间/健身房跌落楼梯井；东段 6.45..7.5 留空作为落地进入储物间的出口
+    wall_v('f2_stair_wall', 'x', -4.55, 0.1, 6.45, 0.1, M('plaster_int'), [], yBase=F2, height=1.35)
     # 坡屋顶
     ridgeY, eaveY = F2 + 2.9 + 2.15, F2 + 2.9
     EZ, EX = 6.35, 8.4

@@ -38,8 +38,8 @@
 | `furniture.js` | 60 件家具 CATALOG + 槽位元数据 + 程序化回退 builder | **回退 builder 的尺寸/位置必须与 GLB 一致**（槽位 offset、门铰链 hinge 依赖它） |
 | `items.js` | 8 种藏匿物品定义 | size 单位米 [宽,高,厚]；tags: paper/thin/metal/small |
 | `slots.js` | `canHide` 尺寸类型校验 | 纸可折叠、书页需 paper、相框需 thin |
-| `interact.js` | E 交互/开合动画/放入/拿取 | `OPENABLE_DEFS` 定义每件家具的动画部件（hinge/slide/book/prop/lift）；`aimedBook` 准星选书；`dropAnims`/`bookTweens` 动画队列 |
-| `placement.js` | 藏家放置 UI | 流程：E→选位置(stage=slot)→序号选物品(stage=item)→藏入；书页间 stage=book 由 `update()` 每帧准星拾取；底部 `#help-bar` 提示条 |
+| `interact.js` | E 交互/开合动画/放入/拿取 | `OPENABLE_DEFS` 定义每件家具的动画部件（hinge/slide/book/prop/lift）；**抽屉与书本按部件精确瞄准**（射线命中哪个抽屉/书就操作哪个，`_entryByNode` 节点反查），**抽屉+书本全局同时只开一个**（`openSolo`），Q 关上；书架每本书是独立 book 条目（`books:*` 展开 33×2）；`aimedBook(piece)` 准星选书；`dropAnims` 动画队列 |
+| `placement.js` | 藏家放置 UI | 流程：E→选位置(stage=slot)→序号选物品(stage=item)→藏入；**瞄准书本按 E 直接抽出该书进入选物品**（`onAimBook`，按书所在层自动匹配 pages 槽位）；书页间也可走面板 stage=book 由 `update()` 每帧准星拾取；底部 `#help-bar` 提示条 |
 | `player.js` | 第一人称控制器 | **指针锁定模式**（点击画面锁定）；无下蹲； eyeHeight 恒 1.62 |
 | `game.js` | 回合状态机 MENU→HIDE→COVER→SEEK→RESULT | 画中画已取消（beginSeek 不再开 pip） |
 | `spectator.js` | 上帝相机/替身/画中画 | 替身仅在 layer 1（画中画层），PiP 关闭时不可见 |
@@ -60,7 +60,7 @@
 
 ## 4. Blender 建模管线（tools/）
 
-- **Blender 可执行文件**：`D:\WindowsApps\BlenderFoundation.Blender_5.2.1.0_x64__ppwjx1n5r4v9t\Blender\blender.exe`（5.2.1 LTS，无头模式）
+- **Blender 可执行文件**：`D:\WindowsApps\BlenderFoundation.Blender_5.2.2.0_x64__ppwjx1n5r4v9t\Blender\blender.exe`（5.2.2 LTS，无头模式；WindowsApps 商店版会自动升级小版本，路径失效就 `ls -d /d/WindowsApps/BlenderFoundation*` 找最新的）
 - **重建全部模型**（改了 `tools/blender_build.py` 后必跑）：
   ```
   blender.exe -b --python tools/blender_build.py -- --out "D:\桌面\ZCode\hide-and-seek"
@@ -82,12 +82,14 @@
 - M17：门开合方向全面修正（从把手侧向外开）+ 楼梯扶手立柱精确接触 + 补齐二楼家具缺失开合定义
 - M18：抽屉空心化（DRAWER_BOX）+ 物品跟随抽屉滑出 + 电视柜两层 + 玩具箱四面补板 + 吊柜门方向补修
 - M19：抽屉把手并入抽屉对象（随滑出移动）
+- M26（本地）：楼梯支撑判定修复（M25 的"圆心入投影"卡死楼梯，改重叠≥0.1m）+ 楼梯井南墙降为1.35m半墙（blender wall_v 加 height 参数，villa2 wall 加 h 参数）+ **抽屉/书本按部件精确瞄准交互**（E 开哪个抽屉取决于准星所在的把手面；抽屉+书本全局单开、开新自动关旧；Q 关上；书本 = 每本独立 book 条目，藏家瞄准书按 E 直接抽出藏入，remapBookEntry/animateBook/bookList 移除）+ **床头柜/文件柜改双层抽屉**（blender: nightstand/file_cabinet 各加 part_drawer2+把手，原 fileCabinet 的静态 front_lower 删除；槽位 drawer→drawer1/drawer2，下抽屉 offset 床头柜0.195/文件柜0.145；focusPiece 修正：瞄准抽屉开面板不再连开柜门）
+- **M26 补充**：厨房橱柜前板缝隙修复——DRAWER_BOX 加 front_w/front_h/front_dx/front_dy 可选参数（前板铺满柜体开口，默认行为不变），橱柜两抽屉前板加高加宽（上塞台面底、下接柜门顶、中缝对齐隔板），柜门加宽至 0.97（铰链同步移到 [-1.16,0.25,0.315]），openbox 加宽消门板间黑洞，右端加 front_right 封板。**微波炉改可开门家具**：blender b_microwave 改 HOLLOW 空心炉腔+part_door（左铰链/玻璃窗/右缘把手），CATALOG 加 inner 炉腔藏点（cap [0.3,0.16,0.26] offset [0,0.1,0]），OPENABLE_DEFS 加 door 铰链（slots:['inner'] 映射暴露拿取——门类 def 的 slots 字段决定 openBySlotKey 键名，key 本身不再是键）。**水壶/砧板升级为独立家具件**：原直接建在 villa.glb 里（villa 不在射线目标中，瞄准水壶穿透显示橱柜），现拆出 kettle.glb/board.glb + CATALOG 无槽位件（pos [6.85,0.91,-2.7] / [6.85,0.902,-4.75]，collide false），瞄准正确显示名字。教训：装饰小物要进玩家瞄准命名体系就必须是独立 piece，不能混进 villa.glb。**客厅茶几南移 0.3m**（z -1.7→-2.0，仍在地毯上）：沙发前沿与茶几间缝隙 0.475<玩家直径 0.64 不能通行，加宽至 0.775，双向走廊实测通过
 - 后续微调：下蹲移除；退出改回 **Esc + 指针锁定**；取消找家画中画；菜单"自定义"下拉；**发布上线（GitHub + Netlify）**
 
 ## 6. 当前玩法操作（写死在 UI 文案里，改功能要同步改文案）
 
-- 藏家：瞄准家具按 **E** 选位置 → 按序号选物品藏入 → **G** 完成；**Q** 关面板；书页间瞄准书本后 E 确认
-- 找家：点击画面锁定鼠标，**WASD** 移动 / **Shift** 跑 / **E** 开门·检查·拿取 / **Esc** 退出本局
+- 藏家：瞄准家具按 **E** 选位置 → 按序号选物品藏入 → **G** 完成；**Q** 关面板；瞄准书本按 **E** 直接抽出该书藏入书页间
+- 找家：点击画面锁定鼠标，**WASD** 移动 / **Shift** 跑 / **E** 开门·抽屉·书本·检查·拿取（抽屉/书本对准把手所在面精确操作，同时只开一个）/ **Q** 关上抽屉书本 / **Esc** 退出本局
 - 菜单：回合数（1/3/5/自定义 1-20）、藏匿件数（1/2/3/自定义 1-8）、搜索时间、冷热提示
 
 ## 7. 调试与测试方法

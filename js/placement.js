@@ -2,6 +2,7 @@
 // 流程：瞄准家具按 E → 打开家具+选位置(槽位序号) → 按物品序号藏入（物品落入动画）
 // 书架书页间：瞄准哪本书就藏进哪本（面板实时显示 Vol.N，书本抽出→藏入→放回）
 // 底部物品栏已取消（选位置后面板内直接选物品），底部改为操作提示条
+import * as THREE from 'three';
 import { canHide, SLOT_LABELS } from './slots.js';
 import { ITEM_DEFS } from './items.js';
 
@@ -65,19 +66,52 @@ export class PlacementUI {
   }
 
   // E 瞄准家具后由 interact 调用：书本瞄准模式下=确认藏入；否则打开槽位面板
-  onAimE(piece) {
+  // （entry：准星命中的具体开合部件，抽屉面板只拉开那一个）
+  onAimE(piece, entry = null) {
     if (this.stage === 'book') { this._confirmBook(); return; }
-    this.openSlotPanelFor(piece);
+    this.openSlotPanelFor(piece, entry);
   }
 
-  // 打开某家具的槽位面板（联动把家具打开）
-  openSlotPanelFor(piece) {
+  // 准星正对书本时按 E：直接抽出那本书进入"选物品藏入"
+  onAimBook(piece, book) {
+    if (!this.active) return;
+    // 书页间瞄准模式下=确认这本书
+    if (this.stage === 'book' && this.piece === piece) { this.aimedBook = book; this._confirmBook(); return; }
+    if (this.placedCount >= this.maxItems) { this._toast(`本回合最多藏 ${this.maxItems} 件，按 <b>G</b> 完成`); return; }
+    const slot = this._pagesSlotFor(piece, book);
+    if (!slot) return;
+    if (slot.filledWith) { this._toast(`${slot.name}已经藏了东西，换另一层书架的书试试`); return; }
+    if (this.openedPieceId && this.openedPieceId !== piece.def.id) this._closePiece();
+    this.piece = piece;
+    this.openedPieceId = piece.def.id;
+    this.slot = slot;
+    this.aimedBook = book;
+    this.interact.openBook(book.proxy);   // 抽出这本书（同抽屉：全局单开）
+    this._chooseSlot(slot);               // 直接进入选物品
+  }
+
+  // 按书本所在层高匹配书页间槽位
+  _pagesSlotFor(piece, book) {
+    const slots = piece.slots.filter(s => s.type === 'pages');
+    if (!slots.length) return null;
+    book.proxy.updateMatrixWorld(true);
+    const wy = book.proxy.getWorldPosition(new THREE.Vector3()).y;
+    let best = null, bd = Infinity;
+    for (const s of slots) {
+      const d = Math.abs(s.worldPos.y - wy);
+      if (d < bd) { bd = d; best = s; }
+    }
+    return best;
+  }
+
+  // 打开某家具的槽位面板（柜门/盖子全开；抽屉只拉开准星瞄准的那个）
+  openSlotPanelFor(piece, aimedEntry = null) {
     if (!this.active) return;
     if (this.placedCount >= this.maxItems) { this._toast(`本回合最多藏 ${this.maxItems} 件，按 <b>G</b> 完成`); return; }
     if (this.openedPieceId && this.openedPieceId !== piece.def.id) this._closePiece();
     this.piece = piece;
     this.openedPieceId = piece.def.id;
-    this.interact.togglePiece(piece.def.id, true);   // 联动开：柜门/抽屉/盖子
+    this.interact.focusPiece(piece.def.id, aimedEntry);   // 联动开：柜门/盖子 + 瞄准的抽屉
     this.stage = 'slot';
     this.slot = null;
     this.fpSlots = [];
@@ -109,6 +143,9 @@ export class PlacementUI {
   _chooseSlot(slot) {
     this.stage = 'item';
     this.slot = slot;
+    // 位置是另一个抽屉时，合上先前拉开的、拉开这一个（全局单开）
+    const entry = this.interact.entryForSlot(this.piece.def.id, slot.key);
+    if (entry && entry.kind === 'slide' && entry.target !== 1) this.interact.openSolo(entry);
     let html = `<h3>位置：${this.piece.def.name} · ${slot.name} —— 选物品</h3>`;
     ITEM_DEFS.forEach((item, i) => {
       const check = canHide(item, slot);
@@ -137,12 +174,10 @@ export class PlacementUI {
     const res = this.interact.placeItem(this.piece.def.id, this.slot.key, item.id, extra);
     if (res.ok) {
       if (isPages && this.aimedBook) {
-        // 藏书动画：把书抽得更开 → 物品落入 → 书放回原位夹住物品
-        const book = this.aimedBook.proxy;
-        this.interact.animateBook(book, 0.16, 0.4, -0.4);
-        this.interact.remapBookEntry(this.piece.def.id, this.slot.key, this.aimedBook.index);
+        // 藏书动画：书保持抽出 → 物品落入原位 → 稍后放回夹住物品
+        const proxy = this.aimedBook.proxy;
         clearTimeout(this._bookTimer);
-        this._bookTimer = setTimeout(() => this.interact.animateBook(book, 0, 0.45, 0), 500);
+        this._bookTimer = setTimeout(() => this.interact.closeBook(proxy), 500);
         this._toast(`「${item.name}」已夹进${this.aimedBook.name}！`);
       } else {
         this._toast(`「${item.name}」已藏进${this.piece.def.name}的${this.slot.name}！`);
@@ -192,7 +227,7 @@ export class PlacementUI {
 
   _closePiece() {
     if (this.openedPieceId) {
-      this.interact.togglePiece(this.openedPieceId, false);   // 联动合上
+      this.interact.closePiece(this.openedPieceId);   // 合上柜门/抽屉/书本
       this.openedPieceId = null;
     }
     this.piece = null;
@@ -204,15 +239,15 @@ export class PlacementUI {
     if (this.onDone) this.onDone();
   }
 
-  // 每帧：书本瞄准模式下实时拾取准星书本并微抽出预览
+  // 每帧：书本瞄准模式下实时拾取准星书本并抽出预览（开新书自动合上上一本）
   update() {
     if (!this.active || this.stage !== 'book') return;
-    const aim = this.interact.aimedBook();
+    const aim = this.interact.aimedBook(this.piece);
     // aimedBook() 每次返回新对象，按其中的书本代理比较，避免每帧重复触发动画
     if (aim?.proxy !== this.aimedBook?.proxy) {
-      if (this.aimedBook) this.interact.animateBook(this.aimedBook.proxy, 0, 0.2, 0);
+      if (this.aimedBook) this.interact.closeBook(this.aimedBook.proxy);
       this.aimedBook = aim;
-      if (aim) this.interact.animateBook(aim.proxy, 0.06, 0.2, -0.12);
+      if (aim) this.interact.openBook(aim.proxy);
       const name = aim ? `${aim.name}（第 ${aim.index + 1} 本）` : '——';
       const h3 = this.panelEl.querySelector('h3');
       if (h3) h3.innerHTML = `藏进书页间 —— 将藏入：<b>${name}</b>`;
@@ -224,7 +259,11 @@ export class PlacementUI {
     if (e.code === 'KeyG') { this._tryFinish(); return; }
     if (e.code === 'KeyQ') {
       if (this.stage === 'item' && this.piece) { this.openSlotPanelFor(this.piece); return; }
-      if (this.stage === 'book' && this.piece) { this.openSlotPanelFor(this.piece); return; }
+      if (this.stage === 'book' && this.piece) {
+        if (this.aimedBook) this.interact.closeBook(this.aimedBook.proxy);   // 合上预览的书
+        this.openSlotPanelFor(this.piece);
+        return;
+      }
       this._closePanel();
       return;
     }

@@ -55,7 +55,8 @@ async function init() {
 
   // ---- 藏家放置 UI ----
   const placement = new PlacementUI(interact, pieces, camera);
-  interact.onHideInteract = (piece) => placement.onAimE(piece);
+  interact.onHideInteract = (piece, entry) => placement.onAimE(piece, entry);
+  interact.onHideBook = (piece, book) => placement.onAimBook(piece, book);
   tickHandlers.push(() => placement.update());
 
   // ---- 上帝视角（菜单背后的环绕展示） ----
@@ -78,14 +79,7 @@ async function init() {
   placement.onToast = showToast;
 
   // ---- 音效接线 ----
-  const _toggle = interact.togglePiece.bind(interact);
-  interact.togglePiece = (id, open) => {
-    const entries = interact.openEntries.filter(e => e.pieceId === id);
-    const anyClosed = entries.some(e => e.target === 0);
-    const ret = _toggle(id, open);
-    if (entries.length) (open === null ? anyClosed : open) ? SFX.open() : SFX.close();
-    return ret;
-  };
+  interact.onEntryToggle = (entry, open) => { if (open) SFX.open(); else SFX.close(); };
   const _place = interact.placeItem.bind(interact);
   interact.placeItem = (...a) => { const r = _place(...a); if (r.ok) SFX.place(); return r; };
   const _pickup = interact.onPickup;

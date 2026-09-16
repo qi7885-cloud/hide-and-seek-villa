@@ -28,6 +28,7 @@ const PIECE_MODEL = {
   shoeCabinet: 'shoe_cabinet', sideTable: 'side_table', wallCabinet: 'wall_cabinet',
   fileCabinet: 'file_cabinet', beanBag: 'bean_bag', backpack: 'backpack',
   planter: 'planter', floorLamp2: 'floor_lamp', plant3: 'plant',
+  kettle: 'kettle', board: 'board',
   rug2: 'rug_small',
 };
 const STATIC_MODEL = ['villa', 'yard'];

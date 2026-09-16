@@ -78,6 +78,7 @@ export class FPPlayer {
 
     // ---- 多层支持物理：台阶自动上步 / 二楼楼板 / 楼梯 ----
     const STEP = 0.3;        // 可迈上的最大高度差
+    const OVERLAP = 0.1;     // 作为支撑面所需的最小投影重叠深度
     const feet = this.pos.y;
     let support = 0;         // 脚下的支撑面高度（默认地面）
     for (let pass = 0; pass < 2; pass++) {
@@ -89,10 +90,11 @@ export class FPPlayer {
         const d2 = dx * dx + dz * dz;
         if (d2 >= this.radius * this.radius) continue;
         if (c.maxY <= feet + STEP + 0.01) {
-          // 台阶/矮台：仅当圆心已进入其投影范围才作为支撑面（贴靠不再瞬移上台），
-          // 矮台永不横向阻挡（保证上下楼梯顺畅）
-          if (this.pos.x >= c.minX && this.pos.x <= c.maxX &&
-              this.pos.z >= c.minZ && this.pos.z <= c.maxZ) {
+          // 台阶/矮台：圆与其投影重叠足够深（≥OVERLAP）才作为支撑面，轻擦不再瞬移上台；
+          // 矮台永不横向阻挡。楼梯踏步进深0.29<半径0.32，且上一级台阶(高0.35)按"墙"推挤，
+          // 圆心入投影的判据会卡死楼梯——上行时圆在下一级投影内最深可入约0.30m，取0.1m阈值
+          // 既保证迈得上台阶，又防擦边上台
+          if (d2 < (this.radius - OVERLAP) * (this.radius - OVERLAP)) {
             support = Math.max(support, c.maxY);
           }
           continue;

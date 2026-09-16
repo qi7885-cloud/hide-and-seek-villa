@@ -25,21 +25,22 @@ function box(scene, colliders, cx, cy, cz, sx, sy, sz, m, opts = {}) {
   return null;
 }
 
-// 带开口的直墙（yBase 为墙底高度）
+// 带开口的直墙（yBase 为墙底高度，o.h 为墙顶高度（相对 yBase），默认全高 WALL_H）
 function wall(scene, colliders, o) {
   const { axis, at, from, to, yBase = 0, thickness, m } = o;
+  const top = o.h ?? WALL_H;
   const openings = (o.openings || []).slice().sort((a, b) => a.at - b.at);
   const segs = [];
   let cur = from;
   for (const op of openings) {
     const a0 = op.at - op.w / 2, a1 = op.at + op.w / 2;
-    if (a0 > cur) segs.push({ a: cur, b: a0, y0: 0, y1: WALL_H });
-    const y0 = op.y0 ?? 0, y1 = op.y1 ?? WALL_H;
+    if (a0 > cur) segs.push({ a: cur, b: a0, y0: 0, y1: top });
+    const y0 = op.y0 ?? 0, y1 = op.y1 ?? top;
     if (y0 > 0) segs.push({ a: a0, b: a1, y0: 0, y1: y0 });
-    if (y1 < WALL_H) segs.push({ a: a0, b: a1, y0: y1, y1: WALL_H });
+    if (y1 < top) segs.push({ a: a0, b: a1, y0: y1, y1: top });
     cur = a1;
   }
-  if (cur < to) segs.push({ a: cur, b: to, y0: 0, y1: WALL_H });
+  if (cur < to) segs.push({ a: cur, b: to, y0: 0, y1: top });
   for (const s of segs) {
     const len = s.b - s.a;
     if (len <= 0.002) continue;
@@ -131,9 +132,10 @@ export function buildUpperFloor(scene, colliders) {
   const railBeam = box(scene, colliders, 3.85, 2.72, -4.53, Math.hypot(5.22, 3.15), 0.07, 0.07, mat(0x8a6a45), { collide: false });
   if (railBeam) railBeam.rotation.z = Math.atan2(3.15, 5.22); // 扶手斜梁（随坡度，纯装饰无碰撞）
 
-  // ---- 楼梯井南缘实体墙（GLB 提供视觉；碰撞在此生成）——
-  // 上楼到顶正对墙面，同时防止从储物间跌落楼梯井；东段 6.45..7.5 为落地出口 ----
-  wall(scene, colliders, { axis: 'x', at: -4.55, from: 0.1, to: 6.45, yBase: F2, thickness: 0.1, m: intMat });
+  // ---- 楼梯井南缘半墙（GLB 提供视觉；碰撞在此生成）——
+  // 高1.35（比健身房器械略高，可探看楼梯井），仍防止从健身房跌落楼梯井；
+  // 上楼到顶正对墙面；东段 6.45..7.5 为落地出口 ----
+  wall(scene, colliders, { axis: 'x', at: -4.55, from: 0.1, to: 6.45, yBase: F2, thickness: 0.1, m: intMat, h: 1.35 });
 
   // ---- 坡屋顶（layer 2：院内/一楼视角可见，菜单俯瞰自动隐藏；GLB 模式由 Blender 提供）----
   if (VISUALS) {
