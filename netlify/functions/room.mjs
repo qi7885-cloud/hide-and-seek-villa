@@ -20,7 +20,7 @@ const ROOM_TTL = 86400;          // 秒：房间 24 小时自动过期
 const MAX_HIDE = 8;
 const SEEK_MAX = 1800;           // 秒：搜索时长上限 30 分钟
 const ID_RE = /^[a-zA-Z0-9_]{1,48}$/;
-const SLOT_RE = /^[a-z0-9_:]{1,48}$/;
+const SLOT_RE = /^[a-zA-Z0-9_:]{1,48}$/;
 
 // ---- 存储适配：生产用 Netlify Blobs；本地 dev 若 Blobs 环境不可用则降级进程内存 ----
 // （内存模式重启 dev 即清空，仅够联调；线上 Blobs 不受影响）

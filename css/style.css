@@ -175,3 +175,17 @@ body { font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; col
   color: rgba(255,255,255,.8); font-size: 14px; cursor: pointer; font-family: inherit;
 }
 .btn-ghost:hover { background: rgba(255,255,255,.1); }
+
+/* 等待屏：分享链接框 */
+.online-link-box { display: flex; gap: 8px; margin: 4px 0 10px; align-items: center; }
+.online-link-input {
+  flex: 1; min-width: 0; font-size: 13px; padding: 9px 10px;
+  border-radius: 8px; border: 1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); font-family: inherit;
+}
+.online-link-box button {
+  padding: 9px 16px; border-radius: 8px; border: none;
+  background: #ffd166; color: #1c2333; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.online-link-box button:hover { filter: brightness(1.08); }

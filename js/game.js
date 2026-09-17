@@ -71,12 +71,23 @@ export class Game {
     const link = `${location.origin}${location.pathname}?room=${code}`;
     document.getElementById('online-title').textContent = '🔒 藏匿已上锁';
     document.getElementById('online-info').textContent =
-      `共 ${hides.length} 件物品 · 搜索限时 ${this._fmtDur(this.settings.seekTime)}。把房间号或链接发给朋友：`;
+      `共 ${hides.length} 件物品 · 搜索限时 ${this._fmtDur(this.settings.seekTime)}。把链接发给朋友，对方打开就能直接搜：`;
     const codeLine = document.getElementById('online-code-line');
     codeLine.textContent = code;
     codeLine.onclick = async () => {
       try { await navigator.clipboard.writeText(link); this.toast('链接已复制，发给朋友即可'); }
       catch { this.toast(`链接：${link}`); }
+    };
+    // 分享链接明示 + 一键复制（朋友打开链接 = 自动进入找家加入流程）
+    const linkBox = document.getElementById('online-link-box');
+    const linkInput = document.getElementById('online-link');
+    linkInput.value = link;
+    linkBox.classList.remove('hidden');
+    const copyBtn = document.getElementById('btn-online-copy');
+    copyBtn.onclick = async () => {
+      try { await navigator.clipboard.writeText(link); copyBtn.textContent = '已复制 ✓'; }
+      catch { linkInput.select(); document.execCommand && document.execCommand('copy'); copyBtn.textContent = '已复制 ✓'; }
+      setTimeout(() => { copyBtn.textContent = '复制链接'; }, 2000);
     };
     document.getElementById('online-live').textContent = '等待玩家加入…';
     const btn = document.getElementById('btn-online-action');

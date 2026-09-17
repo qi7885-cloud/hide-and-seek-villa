@@ -161,12 +161,22 @@ async function init() {
     if (game.onlineAction) game.onlineAction();
   };
   document.getElementById('btn-online-exit').onclick = () => game.quitToMenu();
-  // URL 带 ?room=XXXXXX 时预填房号（A 发链接给 B 的场景）
+  // URL 带 ?room=XXXXXX（A 发的链接）：预填房号，模型加载完后自动进入加入流程——
+  // 找家打开链接即见"开始搜索"确认屏，只需一键确认
   const roomParam = new URLSearchParams(location.search).get('room');
   if (roomParam) {
     const input = document.getElementById('online-code');
     input.value = roomParam.toUpperCase();
     input.focus();
+    const autoJoin = () => {
+      const g = window.__game;
+      if (g && g.pieces && g.pieces.length >= 60) {
+        document.getElementById('btn-online-join').click();
+        return;
+      }
+      setTimeout(autoJoin, 250);
+    };
+    autoJoin();
   }
 
   // 联机找家：搜查回调（藏点在服务端，客户端只逐槽位问询）
