@@ -8,7 +8,7 @@ import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 
 // pieceId(目录 Catalog) -> GLB 文件名（同 builder 的实例共用）
 const PIECE_MODEL = {
-  sofa: 'sofa', sofa2: 'sofa_lounge2',   // 一楼客厅=新款法式圆扶手；二楼休息区沿用旧款
+  sofa: 'sofa', sofa2: 'sofa',           // 一楼客厅+二楼休息区=新款法式圆扶手 v2（2026-09-17 用户要求统一）
   coffeeTable: 'coffee_table', coffeeTable2: 'coffee_table',
   carpetL: 'carpet', carpet2: 'carpet', rugB: 'rug_small',
   tvCabinet: 'tv_cabinet', tv: 'tv',
@@ -16,6 +16,7 @@ const PIECE_MODEL = {
   counter: 'counter', fridge: 'fridge', diningTable: 'dining_table',
   chair1: 'chair', chair2: 'chair', chair3: 'chair', chair4: 'chair',
   cup: 'cup', fruitBowl: 'fruit_bowl', microwave: 'microwave', trashBin: 'trash_bin',
+  treadmill: 'treadmill', flyMachine: 'fly_machine', dumbbellRack: 'dumbbell_rack', yogaMat: 'yoga_mat',
   bed: 'bed', bed2: 'bed', bedKids: 'bed',
   nightstand: 'nightstand', nightstand2: 'nightstand',
   wardrobe: 'wardrobe', wardrobe2: 'wardrobe',

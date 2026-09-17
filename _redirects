@@ -8,3 +8,4 @@
 # Blender 源文件不上公网（.gitignore 已阻止提交，这里再兜一层，防手工上传）
 /models/pieces/tv.blend    /  404!
 /models/pieces/tv.blend1   /  404!
+/node_modules/*  /  404!

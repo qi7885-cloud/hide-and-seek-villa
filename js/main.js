@@ -14,6 +14,7 @@ import { itemById, setItemFactory } from './items.js';
 import { SFX } from './audio.js';
 import { addWallCartoons } from './cartoons.js';
 import { loadAllModels, instantiatePiece, staticModel, instantiateItem } from './models.js';
+import { netCreate, netStartSeek, netCheck, netStatus, isAvailable } from './net.js';
 
 const container = document.getElementById('app');
 
@@ -125,6 +126,58 @@ async function init() {
   document.getElementById('btn-cover-continue').onclick = () => game.beginSeek();
   document.getElementById('btn-next-round').onclick = () => game.nextRound();
   document.getElementById('btn-exit').onclick = (e) => { e.stopPropagation(); game.quitToMenu(); };
+
+  // ---- 联机模式（2026-09-18 方案①：房间号 + 状态中转） ----
+  const onlineErr = (msg) => {
+    const el = document.getElementById('online-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 6000);
+  };
+  document.getElementById('btn-online-create').onclick = async () => {
+    if (!(await isAvailable())) { onlineErr('联机后端不可用：请用 node server.js / npx netlify dev 启动，或访问线上地址'); return; }
+    // 联机沿用菜单里的 藏匿件数/搜索时间 设置；轮数固定 1、冷热提示关闭（物品未落客户端，提示无意义）
+    const hideSel = document.getElementById('opt-hidecount').value;
+    const hideCustom = +document.getElementById('opt-hidecount-custom').value;
+    game.settings.hideCount = hideSel === 'custom'
+      ? Math.max(1, Math.min(8, hideCustom || 1))
+      : +hideSel;
+    game.settings.seekTime = +document.getElementById('opt-time').value;
+    game.settings.hints = false;
+    game.startOnlineHost();
+  };
+  document.getElementById('btn-online-join').onclick = async () => {
+    const input = document.getElementById('online-code');
+    const code = input.value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(code)) { onlineErr('房间号是 6 位字母数字'); return; }
+    if (!(await isAvailable())) { onlineErr('联机后端不可用：请用 node server.js / npx netlify dev 启动，或访问线上地址'); return; }
+    try {
+      const st = await netStatus(code);
+      if (st.state === 'done') { onlineErr('该房间已经结束了'); return; }
+      game.guestJoin(code, st);
+    } catch (e) { onlineErr(e.message); }
+  };
+  document.getElementById('btn-online-action').onclick = () => {
+    if (game.onlineAction) game.onlineAction();
+  };
+  document.getElementById('btn-online-exit').onclick = () => game.quitToMenu();
+  // URL 带 ?room=XXXXXX 时预填房号（A 发链接给 B 的场景）
+  const roomParam = new URLSearchParams(location.search).get('room');
+  if (roomParam) {
+    const input = document.getElementById('online-code');
+    input.value = roomParam.toUpperCase();
+    input.focus();
+  }
+
+  // 联机找家：搜查回调（藏点在服务端，客户端只逐槽位问询）
+  interact.onOnlineCheck = async (pieceId, slotKey) => {
+    if (game.mode !== 'guest' || !game.online.code) return { hit: false };
+    return netCheck(game.online.code, pieceId, slotKey);
+  };
+  interact.onOnlineExpired = () => {
+    if (game.mode === 'guest') game._guestFinish('timeout');
+  };
+  interact.onOnlineToast = showToast;
 
   // 计时 tick 挂进主循环
   tickHandlers.push((dt) => game.tick(dt));

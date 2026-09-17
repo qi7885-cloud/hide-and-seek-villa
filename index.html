@@ -86,7 +86,18 @@
           </select>
         </label>
       </div>
-      <button id="btn-start" class="btn-primary">开始游戏</button>
+      <button id="btn-start" class="btn-primary">本地双人 · 开始游戏</button>
+      <div class="online-box">
+        <p class="online-title">联机模式（异地 · 一房一轮）</p>
+        <button id="btn-online-create" class="btn-primary">我来藏 · 创建房间</button>
+        <div class="online-join">
+          <input id="online-code" class="online-code-input" maxlength="6"
+                 placeholder="房间号" autocomplete="off" spellcheck="false">
+          <button id="btn-online-join">加入房间（我来找）</button>
+        </div>
+        <p class="online-note">创建房间藏完后把房间号发给朋友，对方在自己电脑上搜；藏点保存在服务器上，找的人开 F12 也看不到</p>
+        <p id="online-error" class="online-error hidden"></p>
+      </div>
       <p class="help-text">
         【藏家】瞄准家具按 <b>E</b> 选位置，再按物品序号藏入；瞄准书本按 <b>E</b> 可直接打开书藏进书页间<br>
         【找家】WASD 移动 / 点击画面锁定鼠标转视角 / Shift 跑 / <b>E</b> 开门·抽屉·书本·拿取（抽屉对准把手拉开，同时只开一个，<b>Q</b> 关上）· 走楼梯上二楼<br>
@@ -101,6 +112,18 @@
       <p class="subtitle">藏匿已完成，搜索即将开始</p>
       <p id="cover-count" class="subtitle"></p>
       <button id="btn-cover-continue" class="btn-primary">我是找家，开始搜索！</button>
+    </div>
+  </div>
+
+  <!-- 联机层：藏家等待找房 / 找家确认开搜 -->
+  <div id="screen-online" class="screen hidden">
+    <div class="screen-card">
+      <h1 id="online-title">联机房间</h1>
+      <p id="online-info" class="subtitle"></p>
+      <p id="online-code-line" class="score online-code-line"></p>
+      <p id="online-live" class="subtitle"></p>
+      <button id="btn-online-action" class="btn-primary hidden">继续</button>
+      <button id="btn-online-exit" class="btn-ghost">返回菜单</button>
     </div>
   </div>
 

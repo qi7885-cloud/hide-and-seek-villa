@@ -28,6 +28,35 @@ http.createServer((req, res) => {
     res.writeHead(400); return res.end('Bad Request');
   }
   if (urlPath === '/') urlPath = '/index.html';
+
+  // ---- 联机函数本地联调：直接挂载 netlify/functions/room.mjs（同一份代码上线上跑） ----
+  // 该函数用标准 Request/Response（Node 18+ 全局），这里做一次薄适配。
+  // Blobs 在裸 node 无环境 → 函数内自动降级进程内存（重启清空，仅联调用）。
+  if (urlPath === '/api/room') {
+    (async () => {
+      try {
+        const chunks = [];
+        for await (const ch of req) chunks.push(ch);
+        const body = Buffer.concat(chunks).toString('utf8');
+        const req2 = new Request('http://127.0.0.1/api/room', {
+          method: req.method,
+          headers: { 'content-type': req.headers['content-type'] || 'application/json' },
+          body: ['POST', 'PUT', 'PATCH'].includes(req.method) ? body : undefined,
+        });
+        const mod = await import('./netlify/functions/room.mjs');
+        const resp = await mod.default(req2, { ip: req.socket.remoteAddress || '0.0.0.0' });
+        res.writeHead(resp.status, {
+          'Content-Type': resp.headers.get('content-type') || 'application/json',
+          'Cache-Control': 'no-store',
+        });
+        res.end(await resp.text());
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('function error: ' + (e && e.message ? e.message : e));
+      }
+    })();
+    return;
+  }
   const filePath = path.join(ROOT, path.normalize(urlPath));
 
   // 防目录穿越：解析后的真实路径必须仍在项目根目录内（用 relative 防兄弟目录前缀绕过）

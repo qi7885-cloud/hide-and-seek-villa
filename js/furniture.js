@@ -92,10 +92,23 @@ function sofa() {
 }
 
 function coffeeTable() {
+  // 与 coffee_table.glb v2 同尺寸：厚板桌面(顶0.45) + 四面围板(顶贴桌底0.408)
+  // + 车木锥腿(足Ø52/下Ø44/上Ø62, 锚定±0.49/±0.24, 高0.40) + 低位隔板(顶0.155)
   const g = new THREE.Group();
-  legs4(g, 1.1, 0.6, 0.4, C.woodDark);
-  box(g, 1.1, 0.05, 0.6, C.wood, 0, 0.425, 0);                   // 桌面
-  box(g, 0.95, 0.03, 0.45, C.wood, 0, 0.14, 0);                  // 隔板
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const lx = sx * 0.49, lz = sz * 0.24;
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.012, 16), C.woodDark);
+    foot.position.set(lx, 0.006, lz);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.022, 0.388, 16), C.woodDark);
+    shaft.position.set(lx, 0.206, lz);
+    g.add(foot, shaft);
+  }
+  box(g, 1.1, 0.042, 0.6, C.wood, 0, 0.429, 0);                   // 桌面
+  box(g, 0.98, 0.026, 0.016, C.woodDark, 0, 0.395, 0.235);        // 围板前
+  box(g, 0.98, 0.026, 0.016, C.woodDark, 0, 0.395, -0.235);       // 围板后
+  box(g, 0.016, 0.026, 0.454, C.woodDark, 0.482, 0.395, 0);       // 围板右
+  box(g, 0.016, 0.026, 0.454, C.woodDark, -0.482, 0.395, 0);      // 围板左
+  box(g, 0.94, 0.03, 0.44, C.woodDark, 0, 0.14, 0);               // 隔板
   return { group: g, parts: {} };
 }
 
@@ -312,35 +325,52 @@ function bed() {
 }
 
 function nightstand() {
+  // 与 nightstand.glb v2 同尺寸：无框柜身（前脸平齐）+ 全覆盖抽屉面板（缝 3mm）。
+  // 盒底锚点不变：上盒底 0.315 / 下盒底 0.125（drawer1/drawer2 槽位依赖）
   const g = new THREE.Group(), P = {};
-  box(g, 0.45, 0.5, 0.4, C.wood, 0, 0.28, 0);
-  legs4(g, 0.45, 0.4, 0.06, C.woodDark);
-  P.drawer = drawerBox(0.4, 0.16, 0.36, C.woodLight, 0, 0.38, 0.03);
-  box(g, 0.12, 0.03, 0.03, C.dark, 0, 0.38, 0.22);               // 把手
-  P.drawer2 = drawerBox(0.4, 0.16, 0.36, C.woodLight, 0, 0.19, 0.03);
-  box(g, 0.12, 0.03, 0.03, C.dark, 0, 0.19, 0.22);               // 把手
+  box(g, 0.016, 0.5, 0.4, C.wood, -0.217, 0.25, 0);              // 侧板左
+  box(g, 0.016, 0.5, 0.4, C.wood, 0.217, 0.25, 0);               // 侧板右
+  box(g, 0.418, 0.016, 0.4, C.wood, 0, 0.492, 0);                // 顶板
+  box(g, 0.418, 0.016, 0.4, C.wood, 0, 0.008, 0);                // 底板
+  box(g, 0.418, 0.468, 0.016, C.wood, 0, 0.25, -0.192);          // 背板
+  P.drawer = drawerBox(0.4, 0.16, 0.36, C.woodLight, 0, 0.395, 0.205);
+  box(g, 0.12, 0.03, 0.03, C.dark, 0, 0.374, 0.227);             // 把手（面板中线上）
+  P.drawer2 = drawerBox(0.4, 0.16, 0.36, C.woodLight, 0, 0.205, 0.205);
+  box(g, 0.12, 0.03, 0.03, C.dark, 0, 0.126, 0.227);             // 把手
   return { group: g, parts: P };
 }
 
 function wardrobe() {
+  // 与 wardrobe.glb v2 同尺寸：五面板柜体（顶底板全深平齐）+ full-overlay 门板
+  // （各盖一半前脸，统一 3mm 缝：门宽 (1.2-0.009)/2=0.5955，x 外缘 ±0.597）+ 19mm 铰链外凸
   const g = new THREE.Group(), P = {};
-  box(g, 1.2, 2.0, 0.6, C.wood, 0, 1.0, 0);
-  P.doorL = box(g, 0.55, 1.9, 0.03, C.woodLight, -0.29, 1.0, 0.315);
-  P.doorR = box(g, 0.55, 1.9, 0.03, C.woodLight, 0.29, 1.0, 0.315);
-  box(g, 0.03, 0.24, 0.03, C.dark, -0.05, 1.0, 0.34);
-  box(g, 0.03, 0.24, 0.03, C.dark, 0.05, 1.0, 0.34);
-  box(g, 1.1, 0.03, 0.5, C.woodDark, 0, 1.7, 0);                 // 顶隔板
-  cyl(g, 0.015, 1.0, C.metal, 0, 1.4, 0).rotation.z = Math.PI / 2; // 挂衣杆
+  box(g, 0.03, 2.0, 0.6, C.wood, -0.585, 1.0, 0);                // 侧板左
+  box(g, 0.03, 2.0, 0.6, C.wood, 0.585, 1.0, 0);                 // 侧板右
+  box(g, 1.14, 0.03, 0.6, C.wood, 0, 1.985, 0);                  // 顶板
+  box(g, 1.14, 0.03, 0.6, C.wood, 0, 0.015, 0);                  // 底板
+  box(g, 1.14, 1.94, 0.03, C.wood, 0, 1.0, -0.285);              // 背板
+  P.doorL = box(g, 0.5955, 1.994, 0.02, C.woodLight, -0.29925, 1.0, 0.309);
+  P.doorR = box(g, 0.5955, 1.994, 0.02, C.woodLight, 0.29925, 1.0, 0.309);
+  box(g, 0.03, 0.24, 0.03, C.dark, -0.03925, 1.0, 0.333);        // 左门把手（自由缘）
+  box(g, 0.03, 0.24, 0.03, C.dark, 0.03925, 1.0, 0.333);         // 右门把手
+  box(g, 1.14, 0.03, 0.5, C.woodDark, 0, 1.7, 0);                // 顶隔板
+  cyl(g, 0.015, 1.08, C.metal, 0, 1.4, -0.18).rotation.z = Math.PI / 2; // 挂衣杆
   return { group: g, parts: P };
 }
 
 function dresser() {
+  // 与 dresser.glb v2 同尺寸：腿(0→0.06) + 无框柜身 + 两块全覆盖大面板（缝 3mm）。
+  // 盒底锚点不变：0.475 / 0.195（drawer1/drawer2 槽位依赖）
   const g = new THREE.Group(), P = {};
-  box(g, 0.9, 0.78, 0.45, C.wood, 0, 0.42, 0);
+  box(g, 0.016, 0.704, 0.45, C.wood, -0.442, 0.412, 0);          // 侧板左
+  box(g, 0.016, 0.704, 0.45, C.wood, 0.442, 0.412, 0);           // 侧板右
+  box(g, 0.9, 0.016, 0.45, C.wood, 0, 0.772, 0);                 // 顶板
+  box(g, 0.868, 0.016, 0.45, C.wood, 0, 0.068, 0);               // 底板
+  box(g, 0.868, 0.672, 0.016, C.wood, 0, 0.412, -0.217);         // 背板
   legs4(g, 0.9, 0.45, 0.06, C.woodDark);
-  P.drawer1 = drawerBox(0.84, 0.26, 0.4, C.woodLight, 0, 0.58, 0.035);
-  P.drawer2 = drawerBox(0.84, 0.26, 0.4, C.woodLight, 0, 0.3, 0.035);
-  for (const y of [0.58, 0.3]) box(g, 0.16, 0.03, 0.03, C.dark, 0, y, 0.245);
+  P.drawer1 = drawerBox(0.84, 0.28, 0.38, C.woodLight, 0, 0.615, 0.23);
+  P.drawer2 = drawerBox(0.84, 0.28, 0.38, C.woodLight, 0, 0.335, 0.23);
+  for (const y of [0.599, 0.241]) box(g, 0.16, 0.03, 0.03, C.dark, 0, y, 0.252);
   return { group: g, parts: P };
 }
 

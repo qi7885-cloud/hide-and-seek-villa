@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）— 你藏我找
 
 > 给下一个 AI 会话/开发者：读完本文即可在现有基础上继续优化，无需重新探索。
-> 最后更新：2026-09-17（M29 后 · 电视 + 一楼沙发换精模，已发布线上）
+> 最后更新：2026-09-18（M31 · 联机模式本地完成，待提交部署）
 
 ## 1. 项目位置与链接
 
@@ -144,6 +144,26 @@
     `git add -A` 会进公开仓库、`netlify deploy --dir .` 会把它传上公网（Netlify 不看 `.gitignore`）。
     两头堵：`.gitignore` 加 `*.blend` / `*.blend1`；`_redirects` 加两条 404。**本地文件未移动、未删除。**
   - 详情与自查步骤见第 2 节；`.blend` 泄露属于"只做 gitignore 不够"的隐蔽坑。
+
+- **M31（本地，未提交）：联机模式（方案①：房间号 + HTTP 状态中转，异地一房一轮）**
+  - 后端 `netlify/functions/room.mjs`（`/api/room`，POST 单入口）：`create`（藏点上传→6位房号，去 I/O/0/1）、
+    `start_seek`（服务端落 deadline）、`check`（逐槽位问询，只答中/不中，藏点永不下发）、
+    `status`（hidden 不含藏点；seeking 带 deadline+now 供时钟校准；done 才下发 hides+foundKeys 结算揭示）。
+    存储：生产 Netlify Blobs（store `hide_rooms`，24h TTL）；**本地 `NETLIFY_DEV` 或裸 node 自动降级进程内存**
+    （本地 Blobs 沙箱连接不可靠且 AggregateError 绕过 async catch——踩坑实录，别再试图在本地硬连 Blobs）。
+    校验：hides ≤8、id 正则（**驼峰 pieceId 合法**，首版只放小写导致 bad_hides）、同槽位去重、创建限频 20/小时/IP。
+  - 前端：`js/net.js`（API 客户端 + `isAvailable()` 探测——判据是应答可解析 JSON，静态服务器回 HTML 文本）、
+    `game.js` 加 `mode='host'|'guest'`（host 藏完 `_hostSealed` 上传+轮询 4s；guest `guestJoin/guestStart/_guestFinish`，
+    计时用服务端 deadline 减本地时钟偏移）、`interact.js` 加 R 搜查 + **开容器/检查特写自动搜查**（命中即把物品
+    生成进槽位，随后按 E 本地拾取）、菜单联机面板（创建/加入/`?room=`预填）。
+  - **start_seek 应答必须带 `state:'seeking'`**：guestStart 展开合并后要检查 st.state，缺字段会误判"已结束"退回菜单（踩坑实录）。
+  - 本地联调：`node server.js` 已挂 `/api/room` 直载函数文件（标准 Request/Response 薄适配）；线上无需任何改动
+    （netlify.toml publish="."，functions 目录自动生效）。**npx netlify dev 的函数代理在本机起不来**（静态 200 但
+    /api/room 全 500 AggregateError，与代码无关），本地联机测试一律走 node server.js。
+  - 实测（node server.js + 双浏览器标签）：API 冒烟 10/10；E2E A 藏 B 找全流程 ✓
+    （房主 KHRLK2 → 找家链接加入 → R 搜查命中茶几球/床头柜硬币 → 2/2 结算 → 房主轮询收到"对方全找到了"）。
+  - 防作弊边界：藏点只存服务端、服务端判定、服务端计时——F12 拿不到藏点；但决心作弊者仍可改内存，朋友间娱乐足够。
+  - 部署提醒：上线前 `npm i`（package.json 已加 @netlify/blobs）；node_modules 已进 .gitignore。
 
 ## 6. 当前玩法操作（写死在 UI 文案里，改功能要同步改文案）
 

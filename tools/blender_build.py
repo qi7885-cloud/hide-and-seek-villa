@@ -130,6 +130,26 @@ def tex_plaster(base, n=256, amp=0.015):
     a += _noise(n, n, amp)
     return _img('T_plaster', np.clip(a, 0, 1))
 
+def tex_paint(n=256):
+    """内墙乳胶漆（2026-09-18 楼体升级）：暖白 + 低频云斑 + 细颗粒，替代旧版单频噪点"""
+    v, u = np.mgrid[0:n, 0:n].astype(np.float32) / n
+    a = np.empty((n, n, 3), np.float32)
+    a[..., 0], a[..., 1], a[..., 2] = (0.925, 0.905, 0.862)
+    blot = (np.sin(u * 9.7 + 1.3) * np.sin(v * 7.1 + 0.7)
+            + 0.5 * np.sin(u * 23.0 + v * 31.0)) * 0.014
+    a *= (1 + blot + _noise(n, n, 0.008)[..., 0])[..., None]
+    return _img('T_paint', np.clip(a, 0, 1))
+
+def tex_stucco(n=256):
+    """外墙水泥砂浆（2026-09-18 楼体升级）：粗灰调颗粒 + 抹刀横纹"""
+    v, u = np.mgrid[0:n, 0:n].astype(np.float32) / n
+    a = np.empty((n, n, 3), np.float32)
+    a[..., 0], a[..., 1], a[..., 2] = (0.885, 0.855, 0.795)
+    grain = _noise(n, n, 0.05)[..., 0]
+    streak = np.sin(v * n * 0.55 + np.sin(u * 14.0) * 3.0) * 0.02
+    a *= (1 + grain + streak)[..., None]
+    return _img('T_stucco', np.clip(a, 0, 1))
+
 def tex_cardboard(n=256):
     v, u = np.mgrid[0:n, 0:n].astype(np.float32) / n
     a = np.empty((n, n, 3), np.float32)
@@ -199,6 +219,9 @@ def _build_materials():
         # 建筑
         'plaster_ext': Ptex('plaster_ext', tex_plaster((0.90, 0.87, 0.81)), 0.9),
         'plaster_int': Ptex('plaster_int', tex_plaster((0.94, 0.92, 0.88), amp=0.012), 0.92),
+        # 楼体升级墙材质（2026-09-18，仅 villa 墙体使用；旧 plaster_* 保留键位防外引）
+        'paint_int':   Ptex('paint_int', tex_paint(), 0.9),
+        'stucco_ext':  Ptex('stucco_ext', tex_stucco(), 0.88),
         'trim':        P('trim', (0.965, 0.945, 0.905), 0.55),
         'ceil':        P('ceil', (0.94, 0.93, 0.90), 0.9),
         'slab':        P('slab', (0.84, 0.80, 0.73), 0.9),
@@ -236,6 +259,10 @@ def _build_materials():
         'velvet_d':    Ptex('velvet_d', tex_fabric((0.31, 0.41, 0.27), weave=0.03), 0.85),
         # 缝/凹槽专用：比面料更暗、更糙，且织纹更粗（缝比面暗 —— 与飞机面板缝同一条道理）
         'velvet_seam': Ptex('velvet_seam', tex_fabric((0.20, 0.27, 0.18), weave=0.06), 0.92),
+        # 健身房（2026-09-18 新增：器械软垫 / 瑜伽垫紫）
+        'gym_pad':     P('gym_pad', (0.45, 0.12, 0.10), 0.9),
+        'yoga':        P('yoga', (0.49, 0.43, 0.66), 0.85),
+        'yoga_d':      P('yoga_d', (0.43, 0.37, 0.59), 0.85),
         'cream':       Ptex('cream', tex_fabric((0.91, 0.88, 0.82)), 0.85),
         'cream_d':     Ptex('cream_d', tex_fabric((0.84, 0.80, 0.72)), 0.85),
         'teddy':       Ptex('teddy', tex_fabric((0.85, 0.79, 0.68), weave=0.08), 0.95),
@@ -604,11 +631,64 @@ def b_sofa():
         reg(m)
 
 def b_coffee_table():
+    """中古风胡桃木茶几 v2（2026-09-17 写实重建，与客厅法式圆扶手沙发 v2 配套）
+    尺寸锚点（必须守住，取自旧版 GLB 实测与 furniture.js 槽位）：
+      占地 1.10 × 0.60；桌面顶面 0.450；隔板顶面 0.155；总高 0.45；
+      原点 = 占地中心 + 地面；正面朝 three +z；无可动部件（furniture.js parts={}）。
+      槽位物品落点（top 0.475 / shelf 0.175）高于面 2~2.5cm 是旧版既有行为，
+      本次不动槽位数据，锚定面按旧值复刻，行为零变化。
+    制造逻辑（写实指南军规6）：桌面板厚 42mm 边缘倒圆；桌面下四面围板承重结构
+      （顶面与桌底齐平贴合，是真实桌子的受力路径）；车木锥腿上Ø62 下Ø44 + 圆盘足，
+      腿顶伸入围板区间 18mm（榫接入围板，不是浮贴）；隔板两端插进腿柱。
+    节点数：4（top/apron/legs/shelf），旧版 6 —— 每 mesh 一次 draw call，只减不增。
+    材质：桌面 wood（中胡桃半光 rough 0.55），其余 wood_dark（深胡桃）——与沙发车木腿同语言。
+    """
+    W, WD = M('wood'), M('wood_dark')
+    P = {}                                              # 归并桶：目标节点名 -> [零件…]
+
+    def put(key, o):
+        P.setdefault(key, []).append(o)
+
+    # ---- 1) 桌面：厚 42mm 圆角面板（0.408 → 0.450；bevel 受 _bevel 的 min 维 40% 钳制到 ~17mm）----
+    put('top', B(1.10, 0.042, 0.60, 0, 0.429, 0, W, 'top', bevel=0.03))
+
+    # ---- 2) 围板四面（0.382 → 0.408，顶面贴桌底）：前后板搭左右板，角部齐平 ----
+    put('apron', B(0.98, 0.026, 0.016, 0, 0.395, 0.235, WD, 'apron_f', 0.004))
+    put('apron', B(0.98, 0.026, 0.016, 0, 0.395, -0.235, WD, 'apron_b', 0.004))
+    put('apron', B(0.016, 0.026, 0.454, 0.482, 0.395, 0, WD, 'apron_l', 0.004))
+    put('apron', B(0.016, 0.026, 0.454, -0.482, 0.395, 0, WD, 'apron_r', 0.004))
+
+    # ---- 3) 四条车木腿（0 → 0.400）：圆盘足 + 锥柱（下Ø44 上Ø62），腿顶没入围板 ----
     for sx in (-1, 1):
         for sz in (-1, 1):
-            reg(B(0.06, 0.4, 0.06, sx * 0.49, 0.2, sz * 0.24, M('wood_dark'), f'leg{sx}{sz}', 0.008))
-    reg(B(1.1, 0.05, 0.6, 0, 0.425, 0, M('wood'), 'top', bevel=0.012))
-    reg(B(0.95, 0.03, 0.45, 0, 0.14, 0, M('wood'), 'shelf', bevel=0.008))
+            lx, lz = sx * 0.49, sz * 0.24
+            put('legs', CYL(0.026, 0.012, lx, 0.006, lz, WD, f'leg_foot{sx}{sz}', 16))
+            put('legs', CONE(0.022, 0.031, 0.388, lx, 0.206, lz, WD, f'leg_shaft{sx}{sz}', 16))
+
+    # ---- 4) 低位隔板（0.125 → 0.155，顶面锚定旧值）：两端插进腿柱 11mm ----
+    put('shelf', B(0.94, 0.030, 0.44, 0, 0.140, 0, WD, 'shelf', bevel=0.010))
+
+    # ---- 5) 烘修改器后归并（合并不继承非活动对象的修改器，必须先烘——同 b_sofa 纪律）----
+    def bake(o):
+        _unselect()
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+        return o
+
+    global CUR
+    keep, CUR = CUR, None            # 临时清空，免去名字被追加 __桶名 后缀
+    merged = []
+    for nm, lst in P.items():
+        for o in lst:
+            bake(o)
+        m = join(lst, nm) if len(lst) > 1 else lst[0]
+        m.name = nm
+        merged.append(m)
+    CUR = keep
+    for m in merged:
+        reg(m)
 
 def b_tv_cabinet():
     # 四条柜腿（0→0.06，与 furniture.js 回退 builder 的 legs4(1.6,0.42,0.06) 对齐；
@@ -738,51 +818,462 @@ def b_bed():
     reg(B(1.55, 0.16, 0.06, 0, 0.585, -0.2, M('blanket'), 'duvet_fold', 0.03))
 
 def b_nightstand():
-    reg(B(0.45, 0.5, 0.4, 0, 0.28, 0, M('wood'), 'body', 0.008))
-    DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.38, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer',
-               handle_mat=M('dark'))
-    DRAWER_BOX(0.36, 0.13, 0.3, 0, 0.19, 0.02, 0.2, M('wood_light'), M('wood_body'), 'part_drawer2',
-               handle_mat=M('dark'))
+    """床头柜 v2（2026-09-18 真实抽屉工艺）：无框柜身（无框全深五面板，前脸平齐）
+    + 全覆盖抽屉面板（铺满整个前脸，缝隙统一 3mm：底/中/顶缝）。
+    尺寸锚点（不变）：0.45×0.5×0.4；抽屉盒底 0.315/0.125（furniture.js 槽位
+    drawer1/drawer2 依赖，物品落点不变）；原点=底面中心；正面 +z。
+    节点：柜身归并 1 + 抽屉×2（面板+箱体+把手已 join）= 3（旧 3，不增）。
+    """
+    W_, H_, D_, T, REV = 0.45, 0.5, 0.4, 0.016, 0.003
+    FW, FH = W_ - 2 * REV, (H_ - 3 * REV) / 2      # 面板 0.444 × 0.2455
+    P = {}
 
-def b_wardrobe():
-    # 空心柜体（开门可见内部），挂衣区/顶隔板/叠放衣物/鞋子
-    HOLLOW(1.2, 2.0, 0.6, 0, 1.0, 0, M('wood'), 'wd_body', t=0.03)
-    reg(join([B(0.55, 1.9, 0.03, -0.29, 1.0, 0.315, M('wood_light'), 'd', 0.008),
-              B(0.03, 0.24, 0.03, -0.05, 1.0, 0.34, M('dark'), 'h')], 'part_doorL'))
-    reg(join([B(0.55, 1.9, 0.03, 0.29, 1.0, 0.315, M('wood_light'), 'd', 0.008),
-              B(0.03, 0.24, 0.03, 0.05, 1.0, 0.34, M('dark'), 'h')], 'part_doorR'))
-    reg(B(1.1, 0.03, 0.5, 0, 1.7, 0, M('wood_dark'), 'topshelf', 0.006))
-    rod = CYL(0.015, 1.0, 0, 1.4, -0.18, M('steel'), 'rod', 14)
-    rod.rotation_euler = (0, math.pi / 2, 0); _apply(rod); reg(rod)
-    # 挂着的衣服（钩子+衣身，颜色长短不一，贴背侧留出前方藏物空间）
-    for i, (gx, gw, gh, mname) in enumerate([(-0.35, 0.26, 0.72, 'velvet'), (-0.12, 0.28, 0.6, 'cream'),
-                                             (0.1, 0.24, 0.8, 'mailbox'), (0.33, 0.26, 0.66, 'shirt')]):
-        reg(TORUS(0.02, 0.004, gx, 1.42, -0.18, M('steel'), f'hook{i}', rot_bl=(0, math.pi / 2, 0)))
-        reg(B(gw, gh, 0.05, gx, 1.38 - gh / 2 - 0.02, -0.18, M(mname), f'cloth{i}', 0.03))
-    # 顶隔板上叠放的衣服
-    reg(B(0.38, 0.09, 0.3, -0.38, 1.755, -0.14, M('cream'), 'fold1', 0.02))
-    reg(B(0.34, 0.08, 0.28, -0.36, 1.84, -0.13, M('velvet'), 'fold2', 0.02))
-    reg(B(0.36, 0.1, 0.3, 0.4, 1.76, -0.14, M('mailbox'), 'fold3', 0.02))
-    reg(B(0.32, 0.08, 0.28, 0.38, 1.85, -0.13, M('cream_d'), 'fold4', 0.02))
-    # 柜底一双鞋
-    reg(B(0.09, 0.1, 0.24, -0.5, 0.08, -0.05, M('shirt'), 'shoeA', 0.02))
-    reg(B(0.09, 0.1, 0.24, -0.5, 0.08, 0.09, M('shirt'), 'shoeB', 0.02))
+    def put(key, o):
+        P.setdefault(key, []).append(o)
+
+    put('body', B(T, H_, D_, -(W_ / 2 - T / 2), H_ / 2, 0, M('wood'), 'ns_sideL', 0.004))
+    put('body', B(T, H_, D_, (W_ / 2 - T / 2), H_ / 2, 0, M('wood'), 'ns_sideR', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, H_ - T / 2, 0, M('wood'), 'ns_top', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, T / 2, 0, M('wood'), 'ns_bottom', 0.004))
+    put('body', B(W_ - 2 * T, H_ - 2 * T, T, 0, H_ / 2, -D_ / 2 + T / 2, M('wood'), 'ns_back', 0.004))
+    # 抽屉盒（盒底=槽位锚点 0.315/0.125）；面板铺满前脸（front_h 铺满，dy 对中）
+    DRAWER_BOX(0.40, 0.16, 0.34, 0, 0.395, -0.014, 0.205, M('wood_light'), M('wood_body'),
+               'part_drawer', handle_mat=M('dark'), front_w=FW, front_h=FH, front_dy=-0.02075,
+               front_dx=0)
+    DRAWER_BOX(0.40, 0.16, 0.34, 0, 0.205, -0.014, 0.205, M('wood_light'), M('wood_body'),
+               'part_drawer2', handle_mat=M('dark'), front_w=FW, front_h=FH, front_dy=-0.07925,
+               front_dx=0)
+    # DRAWER_BOX 内部已 reg——上面直接 reg 了 part；柜身需归并注册
+    def bake(o):
+        _unselect()
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+        return o
+
+    global CUR
+    keep, CUR = CUR, None
+    merged = []
+    for nm, lst in P.items():
+        for o in lst:
+            bake(o)
+        m = join(lst, nm) if len(lst) > 1 else lst[0]
+        m.name = f'ns_{nm}'
+        merged.append(m)
+    CUR = keep
+    for m in merged:
+        reg(m)
 
 def b_dresser():
-    reg(B(0.9, 0.78, 0.45, 0, 0.42, 0, M('wood'), 'body', 0.008))
+    """斗柜 v2（2026-09-18 真实抽屉工艺）：车木腿（0→0.06）+ 无框柜身
+    + 两块全覆盖大抽屉面板（铺满 0.06→0.78 前脸，缝隙统一 3mm）。
+    尺寸锚点（不变）：0.9×0.78×0.45；腿位 ±0.4/±0.19；抽屉盒底 0.475/0.195（槽位锚点）。
+    节点：腿 1 + 柜身 1 + 抽屉×2 = 4（旧 7，只减不增）。
+    """
+    W_, H_, D_, T, REV = 0.9, 0.78, 0.45, 0.016, 0.003
+    LH = 0.06                                       # 腿高
+    FW, FH = W_ - 2 * REV, (H_ - LH - 3 * REV) / 2  # 面板 0.894 × 0.3555
+    P = {}
+
+    def put(key, o):
+        P.setdefault(key, []).append(o)
+
     for sx in (-1, 1):
         for sz in (-1, 1):
-            reg(B(0.05, 0.06, 0.05, sx * 0.4, 0.03, sz * 0.19, M('wood_dark'), f'leg{sx}{sz}', 0.006))
-    for i, dy in enumerate((0.58, 0.3)):
-        DRAWER_BOX(0.78, 0.21, 0.34, 0, dy, 0.02, 0.222, M('wood_light'), M('wood_body'), f'part_drawer{i+1}',
-                   handle_mat=M('dark'))
+            put('legs', B(0.05, LH, 0.05, sx * 0.4, LH / 2, sz * 0.19, M('wood_dark'),
+                          f'dr_leg{sx}{sz}', 0.006))
+    put('body', B(T, H_ - LH, D_, -(W_ / 2 - T / 2), LH + (H_ - LH) / 2, 0, M('wood'),
+                  'dr_sideL', 0.004))
+    put('body', B(T, H_ - LH, D_, (W_ / 2 - T / 2), LH + (H_ - LH) / 2, 0, M('wood'),
+                  'dr_sideR', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, H_ - T / 2, 0, M('wood'), 'dr_top', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, LH + T / 2, 0, M('wood'), 'dr_bottom', 0.004))
+    put('body', B(W_ - 2 * T, H_ - LH - 2 * T, T, 0, LH + (H_ - LH) / 2, -D_ / 2 + T / 2,
+                  M('wood'), 'dr_back', 0.004))
+    # 盒底锚点 0.475/0.195；面板铺满 0.063→0.777
+    DRAWER_BOX(0.84, 0.28, 0.38, 0, 0.615, -0.019, 0.23, M('wood_light'), M('wood_body'),
+               'part_drawer1', handle_mat=M('dark'), front_w=FW, front_h=FH, front_dy=-0.01575,
+               front_dx=0)
+    DRAWER_BOX(0.84, 0.28, 0.38, 0, 0.335, -0.019, 0.23, M('wood_light'), M('wood_body'),
+               'part_drawer2', handle_mat=M('dark'), front_w=FW, front_h=FH, front_dy=-0.09425,
+               front_dx=0)
+
+    def bake(o):
+        _unselect()
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+        return o
+
+    global CUR
+    keep, CUR = CUR, None
+    merged = []
+    for nm, lst in P.items():
+        for o in lst:
+            bake(o)
+        m = join(lst, nm) if len(lst) > 1 else lst[0]
+        m.name = f'dr_{nm}'
+        merged.append(m)
+    CUR = keep
+    for m in merged:
+        reg(m)
 
 def b_desk():
-    reg(B(1.4, 0.05, 0.7, 0, 0.735, 0, M('wood'), 'top', 0.01))
-    reg(B(0.05, 0.7, 0.65, -0.66, 0.36, 0, M('wood_dark'), 'sideL', 0.008))
-    reg(B(0.05, 0.7, 0.65, 0.66, 0.36, 0, M('wood_dark'), 'sideR', 0.008))
-    DRAWER_BOX(0.45, 0.09, 0.44, 0.35, 0.63, 0.05, 0.3, M('wood_light'), M('wood_body'), 'part_drawer',
-               handle_mat=M('dark'))
+    """书桌 v2（2026-09-18）：桌面 + 落地侧板（旧版悬空 1cm 已修）+ 背部望板（真实书桌
+    的 modesty panel）+ 全覆盖抽屉（面板顶缝 3mm 贴桌底，面板厚 14→ hmm 面板贴桌底）。
+    尺寸锚点（不变）：1.4×0.76×0.7，桌面顶 0.76（top 槽位），抽屉盒底 0.585（drawer 槽位），
+    抽屉位 x=0.35。节点：桌面 1 + 侧板望板归并 1 + 抽屉 1 = 3（旧 4）。
+    """
+    reg(B(1.4, 0.05, 0.7, 0, 0.735, 0, M('wood'), 'desk_top', 0.01))
+    parts = [B(0.05, 0.71, 0.65, -0.66, 0.355, 0, M('wood_dark'), 'desk_sideL', 0.008),
+             B(0.05, 0.71, 0.65, 0.66, 0.355, 0, M('wood_dark'), 'desk_sideR', 0.008),
+             B(1.2, 0.35, 0.025, 0, 0.38, -0.30, M('wood_dark'), 'desk_modesty', 0.006)]
+    global CUR
+    keep, CUR = CUR, None
+    for o in parts:
+        _unselect(); o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+    m = join(parts, 'desk_frame')
+    m.name = 'desk_frame'
+    CUR = keep
+    reg(m)
+    # 抽屉：面板顶缝 3mm 贴桌底（0.71），面板 0.45×0.14；盒底锚点 0.585
+    DRAWER_BOX(0.40, 0.10, 0.44, 0.35, 0.635, 0.121, 0.355, M('wood_light'), M('wood_body'),
+               'part_drawer', handle_mat=M('dark'), front_w=0.45, front_h=0.14, front_dy=0.002,
+               front_dx=0)
+
+def b_file_cabinet():
+    """文件柜 v2（2026-09-18 真实抽屉工艺）：无框柜身 + 两块全覆盖面板（缝隙统一 3mm），
+    钢拉手保留。尺寸锚点（不变）：0.45×0.6×0.45；抽屉盒底 0.34/0.075（槽位锚点）。
+    节点：柜身 1 + 抽屉×2 = 3（旧 3，不增）。"""
+    W_, H_, D_, T, REV = 0.45, 0.6, 0.45, 0.016, 0.003
+    FW, FH = W_ - 2 * REV, (H_ - 3 * REV) / 2       # 0.444 × 0.2955
+    P = {}
+
+    def put(key, o):
+        P.setdefault(key, []).append(o)
+
+    put('body', B(T, H_, D_, -(W_ / 2 - T / 2), H_ / 2, 0, M('wood_dark'), 'fc_sideL', 0.004))
+    put('body', B(T, H_, D_, (W_ / 2 - T / 2), H_ / 2, 0, M('wood_dark'), 'fc_sideR', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, H_ - T / 2, 0, M('wood_dark'), 'fc_top', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, T / 2, 0, M('wood_dark'), 'fc_bottom', 0.004))
+    put('body', B(W_ - 2 * T, H_ - 2 * T, T, 0, H_ / 2, -D_ / 2 + T / 2, M('wood_dark'),
+                  'fc_back', 0.004))
+    # 盒底锚点 0.34/0.075
+    DRAWER_BOX(0.40, 0.22, 0.38, 0, 0.45, -0.019, 0.23, M('wood'), M('wood_body'),
+               'part_drawer', handle_mat=M('steel'), front_w=FW, front_h=FH, front_dy=-0.00075,
+               front_dx=0)
+    DRAWER_BOX(0.40, 0.22, 0.38, 0, 0.185, -0.019, 0.23, M('wood'), M('wood_body'),
+               'part_drawer2', handle_mat=M('steel'), front_w=FW, front_h=FH, front_dy=-0.03425,
+               front_dx=0)
+
+    def bake(o):
+        _unselect()
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+        return o
+
+    global CUR
+    keep, CUR = CUR, None
+    merged = []
+    for nm, lst in P.items():
+        for o in lst:
+            bake(o)
+        m = join(lst, nm) if len(lst) > 1 else lst[0]
+        m.name = f'fc_{nm}'
+        merged.append(m)
+    CUR = keep
+    for m in merged:
+        reg(m)
+
+def b_treadmill():
+    """跑步机（2026-09-18 首次建模，替换方块兜底）：圆柱体结构——跑带前后滚筒、
+    圆管侧轨/立柱/扶手（全 CYL），电机罩与控制台为倒角件。
+    尺寸锚点（=furniture.js 兜底）：占地 0.8×1.75，跑带朝 -z，控制台在 +z 前端，总高约 1.2。
+    无可动部件（slots: []）。节点：机身 1 + 钢件 1 + 屏 1 = 3。"""
+    dark, steel, screen = M('dark'), M('steel'), M('screen')
+    # 机身：底座 + 跑带 + 电机罩 + 控制台 + 握把套（同深色，归并）
+    body = [B(0.80, 0.13, 1.75, 0, 0.065, -0.02, dark, 'tm_deck', 0.04),
+            B(0.56, 0.014, 1.46, 0, 0.144, -0.10, dark, 'tm_belt', 0.005),
+            B(0.62, 0.12, 0.30, 0, 0.19, 0.66, dark, 'tm_hood', 0.035),
+            B(0.76, 0.10, 0.30, 0, 1.13, 0.77, dark, 'tm_console', 0.03),
+            CYL(0.017, 0.13, -0.265, 1.05, 0.79, dark, 'tm_gripL', 14),
+            CYL(0.017, 0.13, 0.265, 1.05, 0.79, dark, 'tm_gripR', 14)]
+    for o in body:
+        if o.name.startswith('tm_grip'):
+            o.rotation_euler = (0, math.pi / 2, 0); _apply(o)
+    console = body[3]
+    console.rotation_euler = (-0.28, 0, 0); _apply(console)
+    # 钢件：前后滚筒（Ø85）+ 侧轨 + 斜立柱 + 扶手横管（全圆柱）
+    steel_parts = []
+    for zz in (-0.79, 0.59):
+        r = CYL(0.0425, 0.56, 0, 0.135, zz, steel, f'tm_roller{zz}', 18)
+        r.rotation_euler = (0, math.pi / 2, 0); _apply(r)
+        steel_parts.append(r)
+    for sx in (-1, 1):
+        rail = CYL(0.015, 1.50, sx * 0.315, 0.165, -0.10, steel, f'tm_rail{sx}', 14)
+        rail.rotation_euler = (math.pi / 2, 0, 0); _apply(rail)
+        steel_parts.append(rail)
+        up = CYL(0.0175, 1.04, sx * 0.30, 0.62, 0.69, steel, f'tm_upright{sx}', 14)
+        up.rotation_euler = (0.206, 0, 0); _apply(up)
+        steel_parts.append(up)
+    bar = CYL(0.014, 0.66, 0, 1.05, 0.79, steel, 'tm_bar', 14)
+    bar.rotation_euler = (0, math.pi / 2, 0); _apply(bar)
+    steel_parts.append(bar)
+
+    global CUR
+    keep, CUR = CUR, None
+    for o in body + steel_parts:
+        _unselect(); o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+    m1 = join(body, 'tm_body'); m1.name = 'tm_body'
+    m2 = join(steel_parts, 'tm_steel'); m2.name = 'tm_steel'
+    CUR = keep
+    reg(m1); reg(m2)
+    sc = B(0.52, 0.016, 0.22, 0, 1.16, 0.74, screen, 'tm_screen', 0.004)
+    sc.rotation_euler = (-0.28, 0, 0); _apply(sc)
+    reg(sc)
+
+def b_flymachine():
+    """飞鸟机（2026-09-18 首次建模）：圆柱结构——主立柱/摆臂轴/臂管/顶滑轮全圆柱，
+    配重为圆孔杠铃片堆（Ø200 ×5），座垫圆垫 + 软包靠背。
+    尺寸锚点（=兜底）：占地 0.85×0.95，座垫靠背在 -z，摆臂托盘在 +z 两侧，总高约 1.2。
+    节点：架体 1 + 配重 1 + 座靠垫 1 + 摆臂 1 = 4。"""
+    dark, steel, steel_d = M('dark'), M('steel'), M('steel_dark')
+    PAD, SD = M('gym_pad'), M('steel_dark')
+    base = B(0.85, 0.10, 0.95, 0, 0.05, 0, dark, 'fm_base', 0.03)
+    post = CYL(0.03, 1.00, 0, 0.55, -0.12, steel, 'fm_post', 16)
+    cross = CYL(0.012, 1.05, 0, 1.16, -0.40, steel, 'fm_cross', 12)
+    cross.rotation_euler = (0, math.pi / 2, 0); _apply(cross)
+    plates = []
+    for i in range(5):
+        plates.append(CYL(0.10, 0.045, 0.33, 0.10 + i * 0.048, 0.28, SD, f'fm_plate{i}', 24))
+    plates.append(CYL(0.012, 0.45, 0.33, 0.30, 0.28, steel, 'fm_wpost', 10))
+    pin = CYL(0.006, 0.10, 0.23, 0.244, 0.28, steel, 'fm_pin', 8)
+    pin.rotation_euler = (0, math.pi / 2, 0); _apply(pin)
+    plates.append(pin)
+    seat = CYL(0.135, 0.11, 0, 0.565, -0.10, PAD, 'fm_seat', 24)
+    back = B(0.44, 0.52, 0.09, 0, 0.88, -0.345, PAD, 'fm_back', 0.035)
+    back.rotation_euler = (-0.12, 0, 0); _apply(back)
+    arms = []
+    for sx in (-1, 1):
+        piv = CYL(0.02, 0.52, sx * 0.42, 0.86, 0.16, steel, f'fm_pivot{sx}', 14)
+        arms.append(piv)
+        tube = CYL(0.013, 0.40, sx * 0.24, 1.07, 0.16, steel, f'fm_armtube{sx}', 12)
+        tube.rotation_euler = (0, math.pi / 2, 0); _apply(tube)
+        arms.append(tube)
+        pad = CYL(0.0575, 0.12, sx * 0.08, 1.07, 0.16, PAD, f'fm_pad{sx}', 20)
+        pad.rotation_euler = (0, math.pi / 2, 0); _apply(pad)
+        arms.append(pad)
+        pul = CYL(0.03, 0.028, sx * 0.42, 1.16, 0.16, SD, f'fm_pulley{sx}', 14)
+        pul.rotation_euler = (0, math.pi / 2, 0); _apply(pul)
+        arms.append(pul)
+
+    global CUR
+    # 不清 CUR（reg 依赖它指向本件；__桶名 后缀由导出端剥掉）
+    groups = {'fm_body': [base, post, cross], 'fm_weights': plates,
+              'fm_seatpad': [seat, back], 'fm_arms': arms}
+    for nm, lst in groups.items():
+        for o in lst:
+            _unselect(); o.select_set(True)
+            bpy.context.view_layer.objects.active = o
+            for md in list(o.modifiers):
+                bpy.ops.object.modifier_apply(modifier=md.name)
+        m = join(lst, nm)
+        reg(m)
+
+def b_dumbbellrack():
+    """哑铃架（2026-09-18 首次建模）：圆管框架（4 立柱 + 两层双管托轨）+
+    5 只圆柱头哑铃（杠铃杆 + 两片圆柱配重头，不再用球）。
+    尺寸锚点（=兜底）：1.0×0.46，两层（哑铃中心 y 0.47/0.17），x 位 -0.3/0/0.3 与 ∓0.3。
+    节点：架 1 + 哑铃×5 = 6。"""
+    steel, dark, red = M('steel'), M('dark'), M('eraser')
+    parts = []
+    for sx in (-1, 1):
+        parts.append(CYL(0.011, 0.46, sx * 0.47, 0.23, -0.14, steel, f'drr_postB{sx}', 12))
+        parts.append(CYL(0.011, 0.16, sx * 0.47, 0.08, 0.16, steel, f'drr_postF{sx}', 12))
+    # 两层托轨：每层双圆管（间距 44mm 成 V 槽），全宽贯通
+    for ty, tz in ((0.42, -0.10), (0.13, 0.02)):
+        for dz in (-0.022, 0.022):
+            t = CYL(0.008, 0.94, 0, ty, tz + dz, steel, f'drr_tube{ty}{dz}', 10)
+            t.rotation_euler = (0, math.pi / 2, 0); _apply(t)
+            parts.append(t)
+    # 哑铃：圆柱头坐在托轨管顶（管顶 y 0.428/0.138 + 头半径 0.031）
+    bells = []
+    spec = [(-0.30, 0.46, dark), (0.0, 0.46, red), (0.30, 0.46, dark),
+            (-0.30, 0.17, red), (0.30, 0.17, dark)]
+    for i, (bx, by, bm) in enumerate(spec):
+        bl = [CYL(0.012, 0.22, bx, by, 0, steel, f'db{i}_bar', 10)]
+        for sx2 in (-1, 1):
+            h = CYL(0.031, 0.055, bx + sx2 * 0.105, by, 0, bm, f'db{i}_head{sx2}', 18)
+            h.rotation_euler = (0, math.pi / 2, 0); _apply(h)
+            bl.append(h)
+        bells.append(bl)
+
+    global CUR
+    # 不清 CUR（reg 依赖它指向本件）
+    def bake_join(lst, nm):
+        for o in lst:
+            _unselect(); o.select_set(True)
+            bpy.context.view_layer.objects.active = o
+            for md in list(o.modifiers):
+                bpy.ops.object.modifier_apply(modifier=md.name)
+        m = join(lst, nm)
+        reg(m)
+    bake_join(parts, 'drr_frame')
+    for i, bl in enumerate(bells):
+        bake_join(bl, f'db_{i}')
+
+def b_yogamat():
+    """瑜伽垫（2026-09-18 首次建模）：平铺垫（大倒角圆角）+ 卷轴圆柱（紫色调新材质）。
+    尺寸锚点（=兜底）：垫 0.70×1.42 @ z+0.09，卷轴 Ø0.125 在垫后缘。节点 2。"""
+    reg(B(0.70, 0.02, 1.42, 0, 0.01, 0.09, M('yoga'), 'ym_mat', 0.008))
+    r = CYL(0.0625, 0.70, 0, 0.0625, -0.71, M('yoga_d'), 'ym_roll', 20)
+    r.rotation_euler = (0, math.pi / 2, 0); _apply(r)
+    reg(r)
+
+def b_plant():
+    """盆栽 v2（2026-09-18 写实化，替换"两个变形球"假树冠）：
+    陶盆与土面尺寸原样（soil 顶 0.3025 槽位锚点不动）+ 锥形主干 + 3 根斜枝
+    + 9 簇压扁变形球叶团（双绿色交替、确定性的环形分布，不用随机数保证可重现）。
+    节点：盆 1 + 土 1 + 枝干 1 + 叶团归并 1 = 4（旧 5）。"""
+    reg(CONE(0.13, 0.16, 0.30, 0, 0.15, 0, M('pot'), 'pot_pot', 24))
+    reg(CYL(0.145, 0.025, 0, 0.29, 0, M('soil'), 'pot_soil', 24))
+    trunk = CONE(0.028, 0.018, 0.34, 0, 0.46, 0, M('bark'), 'pot_trunk', 12)
+    branches = []
+    for i in range(3):
+        a = i * 2.094
+        br = CONE(0.013, 0.007, 0.17, math.cos(a) * 0.05, 0.55 + i * 0.035,
+                  math.sin(a) * 0.05, M('bark'), f'pot_branch{i}', 8)
+        br.rotation_euler = (math.sin(a) * 0.55, 0, -math.cos(a) * 0.55)
+        _apply(br)
+        branches.append(br)
+    leaves = []
+    # 显式叶团布局（x, z, y, 半径）：环部 8 簇铺到冠幅 ~0.47，顶心 1 簇抬高
+    LEAF_LAYOUT = [
+        (0.15, 0.02, 0.66, 0.075), (0.10, 0.13, 0.64, 0.065),
+        (-0.04, 0.16, 0.68, 0.070), (-0.15, 0.07, 0.65, 0.080),
+        (-0.14, -0.09, 0.70, 0.065), (-0.03, -0.17, 0.66, 0.070),
+        (0.10, -0.12, 0.71, 0.075), (0.16, -0.03, 0.68, 0.060),
+        (0.0, 0.0, 0.78, 0.085),
+    ]
+    for i, (lx, lz, ly, r) in enumerate(LEAF_LAYOUT):
+        mat = M('leaf1') if i % 2 == 0 else M('leaf2')
+        s = DISPLACED_SPH(r, lx, ly, lz, mat, f'pot_leaf{i}', 0.22, seed=i + 2)
+        s.scale = (1.0, 0.62, 1.0); _apply(s)
+        leaves.append(s)
+
+    global CUR
+    # 注意：不清 CUR——bake_join 里 reg() 依赖 CUR 指向本件；join 自动加 __桶名 后缀，
+    # 导出与校验端都会剥掉（此前在 CUR=None 窗口里 reg 导致整件 0 节点的教训）
+    def bake_join(lst, nm):
+        for o in lst:
+            _unselect(); o.select_set(True)
+            bpy.context.view_layer.objects.active = o
+            for md in list(o.modifiers):
+                bpy.ops.object.modifier_apply(modifier=md.name)
+        m = join(lst, nm)
+        reg(m)
+    bake_join([trunk] + branches, 'pot_trunk')
+    bake_join(leaves, 'pot_leaves')
+
+def b_wardrobe():
+    """欧式无框衣柜 v2（2026-09-17 按真实橱柜工艺重做，修复"闭门漏光见衣服"）
+    根因（旧版）：门板 0.55×2 只盖 1.14 开口的中间部分——中缝 30mm + 上下缝 20mm，
+    闭门可直视挂衣区；顶/底板比侧板短 30mm（HOLLOW 五面板缩进），前脸不平齐。
+    真实工艺（2026-09-17 调研橱柜标准）：无框柜 full-overlay 门板盖住几乎整个前脸，
+    门缝统一 2-3mm（欧洲铰链规格，±2mm 可调）；门板经 18-19mm 铰链臂外凸于柜体前沿；
+    顶/底板与侧板前脸平齐。门关上后前脸光密，只能看到均匀 3mm 门缝。
+    尺寸锚点（必须守住）：外形 1.2 × 2.0 × 0.6；内空侧壁 x=±0.57、挂杆 y=1.4、
+      顶隔板面 1.715（furniture.js 槽位 hang/topShelf 依赖）；原点=底面中心；正面 +z。
+    开合同步：interact.js wardrobe/wardrobe2 的 hinge 改 [-0.597, 1.0, 0.309]
+      （= 左门左缘/门板中心 z）。
+    节点数：11（旧 23）——柜体五板归并 1、门×2（门板+把手）、隔板、杆（含托座）、
+      衣服×4（钩+衣身各自归并）、叠放衣物归并 1、鞋归并 1。
+    """
+    W, WD, WL = M('wood'), M('wood_dark'), M('wood_light')
+    STEEL, DARK = M('steel'), M('dark')
+    W_, H_, D_, T, REV = 1.2, 2.0, 0.6, 0.03, 0.003   # 外形 / 板厚 / 门缝
+    P = {}
+
+    def put(key, o):
+        P.setdefault(key, []).append(o)
+
+    # ---- 1) 柜体五面板：侧板全深；顶/底板夹在侧板间但同深（前脸平齐，消旧版 30mm 缩进）----
+    put('body', B(T, H_, D_, -(W_ / 2 - T / 2), H_ / 2, 0, W, 'wd_sideL', 0.004))
+    put('body', B(T, H_, D_, (W_ / 2 - T / 2), H_ / 2, 0, W, 'wd_sideR', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, H_ - T / 2, 0, W, 'wd_top', 0.004))
+    put('body', B(W_ - 2 * T, T, D_, 0, T / 2, 0, W, 'wd_bottom', 0.004))
+    put('body', B(W_ - 2 * T, H_ - 2 * T, T, 0, H_ / 2, -D_ / 2 + T / 2, W, 'wd_back', 0.004))
+
+    # ---- 2) 全覆盖门板（full overlay）：各盖一半前脸，统一 3mm 缝，19mm 铰链外凸 ----
+    #   door_w=(1.2-3*0.003)/2=0.5955  door_h=2.0-2*0.003=1.994
+    #   左门 x∈[-0.597,-0.0015]  右门镜像；z 中心 0.309（背面藏进柜前脸 1mm 消共面闪烁）
+    DW, DH, DZ = (W_ - 3 * REV) / 2, H_ - 2 * REV, 0.309
+    for sx in (-1, 1):
+        k = 'doorL' if sx < 0 else 'doorR'
+        # 门外缘在 -(W_/2 - REV)，往内延伸 DW：中心 = W_/2 - REV - DW/2
+        cx = sx * (W_ / 2 - REV - DW / 2)
+        put(k, B(DW, DH, 0.02, cx, H_ / 2, DZ, WL, f'wd_{k}', 0.006))
+        # 把手装自由缘（铰链对侧=中缝侧）；背面嵌入门面 1mm，防共面闪烁
+        put(k, B(0.03, 0.24, 0.03, cx - sx * 0.26, H_ / 2, DZ + 0.024, DARK, f'wd_{k}_h', 0.005))
+
+    # ---- 3) 内部（ cavity 不变，槽位锚点原样）：顶隔板补齐到贴侧板内壁 ----
+    put('topshelf', B(1.14, 0.03, 0.5, 0, 1.7, 0, WD, 'wd_topshelf', 0.005))
+    rod = CYL(0.015, 1.08, 0, 1.4, -0.18, STEEL, 'wd_rod', 14)
+    rod.rotation_euler = (0, math.pi / 2, 0); _apply(rod)
+    put('rod', rod)
+    for sx in (-1, 1):   # 杆托座（真实柜的法兰托，消杆端悬空）
+        put('rod', B(0.02, 0.05, 0.06, sx * 0.55, 1.4, -0.18, STEEL, f'wd_rodbrace{sx}', 0.004))
+
+    # ---- 4) 挂着的衣服（钩+衣身各归并一件；位置/颜色与旧版一致）----
+    for i, (gx, gw, gh, mname) in enumerate([(-0.35, 0.26, 0.72, 'velvet'), (-0.12, 0.28, 0.6, 'cream'),
+                                             (0.1, 0.24, 0.8, 'mailbox'), (0.33, 0.26, 0.66, 'shirt')]):
+        hook = TORUS(0.02, 0.004, gx, 1.42, -0.18, STEEL, f'wd_hook{i}', rot_bl=(0, math.pi / 2, 0))
+        put(f'cloth{i}', hook)
+        put(f'cloth{i}', B(gw, gh, 0.05, gx, 1.38 - gh / 2 - 0.02, -0.18, M(mname), f'wd_cloth{i}', 0.03))
+
+    # ---- 5) 顶隔板叠放衣物（叠放关系保持：fold2 叠 fold1 顶、fold4 叠 fold3 顶）----
+    put('folds', B(0.38, 0.09, 0.3, -0.38, 1.755, -0.14, M('cream'), 'wd_fold1', 0.02))
+    put('folds', B(0.34, 0.08, 0.28, -0.36, 1.84, -0.13, M('velvet'), 'wd_fold2', 0.02))
+    put('folds', B(0.36, 0.1, 0.3, 0.4, 1.76, -0.14, M('mailbox'), 'wd_fold3', 0.02))
+    put('folds', B(0.32, 0.08, 0.28, 0.38, 1.85, -0.13, M('cream_d'), 'wd_fold4', 0.02))
+
+    # ---- 6) 柜底一双鞋 ----
+    put('shoes', B(0.09, 0.1, 0.24, -0.5, 0.08, -0.05, M('shirt'), 'wd_shoeA', 0.02))
+    put('shoes', B(0.09, 0.1, 0.24, -0.5, 0.08, 0.09, M('shirt'), 'wd_shoeB', 0.02))
+
+    # ---- 7) 烘修改器后归并（同 b_sofa/b_coffee_table 纪律）----
+    def bake(o):
+        _unselect()
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+        return o
+
+    global CUR
+    keep, CUR = CUR, None
+    merged = []
+    for nm, lst in P.items():
+        for o in lst:
+            bake(o)
+        m = join(lst, nm) if len(lst) > 1 else lst[0]
+        m.name = f'wd_{nm}' if nm not in ('doorL', 'doorR') else f'part_{nm}'
+        merged.append(m)
+    CUR = keep
+    for m in merged:
+        reg(m)
+
+# （旧版 b_dresser/b_desk 已由 2026-09-18 真实抽屉工艺版取代，新定义在本文件更前处）
 
 def b_office_chair():
     reg(CYL(0.26, 0.04, 0, 0.04, 0, M('dark'), 'base', 24))
@@ -950,12 +1441,7 @@ def b_wall_cabinet():
     reg(CYL(0.037, 0.012, 0.05, 0.446, -0.12, M('wood_dark'), 'spice_lid', 12))
     reg(CYL(0.03, 0.16, 0.3, 0.42, -0.12, M('gold'), 'oil2', 14))
 
-def b_file_cabinet():
-    reg(B(0.45, 0.6, 0.45, 0, 0.3, 0, M('wood_dark'), 'body', 0.008))
-    DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.42, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer',
-               handle_mat=M('steel'))
-    DRAWER_BOX(0.34, 0.16, 0.4, 0, 0.155, 0.0, 0.228, M('wood'), M('wood_body'), 'part_drawer2',
-               handle_mat=M('steel'))
+# （旧版 b_file_cabinet 已由 2026-09-18 真实抽屉工艺版取代，新定义在本文件更前处）
 
 def b_kettle():
     # 台面水壶（独立装饰件，可被瞄准命名）
@@ -1013,6 +1499,9 @@ PIECE_BUILDERS = {
     'file_cabinet': b_file_cabinet, 'bean_bag': b_bean_bag, 'backpack': b_backpack,
     'kettle': b_kettle, 'board': b_board,
     'bucket': b_bucket, 'planter': b_planter,
+    # 健身房（2026-09-18 首次建模，此前只有方块兜底无 GLB）
+    'treadmill': b_treadmill, 'fly_machine': b_flymachine,
+    'dumbbell_rack': b_dumbbellrack, 'yoga_mat': b_yogamat,
 }
 
 # ---------------------------------------------------------------- 别墅结构（villa.glb，世界坐标）
@@ -1196,13 +1685,13 @@ def build_villa_v():
     win = lambda at: {'at': at, 'w': 1.4, 'y0': 0.95, 'y1': 2.15}
     door = lambda at, **ex: dict({'at': at, 'w': 1.05, 'y1': 2.15}, **ex)
     # 外墙（北墙厨房侧不留窗：楼梯贴墙而上，窗被台阶穿过）
-    wall_v('wallN', 'x', -5.5 - EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'), [win(-3.75)])
-    wall_v('wallS', 'x', 5.5 + EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'), [win(-3.75), win(3.75)])
-    wall_v('wallW', 'z', -7.5 - EXT_T / 2, -5.5, 5.5, EXT_T, M('plaster_ext'), [win(-4.3), door(-2.5, doorLeaf=True)])
-    wall_v('wallE', 'z', 7.5 + EXT_T / 2, -5.5, 5.5, EXT_T, M('plaster_ext'), [win(-2.75), win(2.75)])
+    wall_v('wallN', 'x', -5.5 - EXT_T / 2, -7.62, 7.62, EXT_T, M('stucco_ext'), [win(-3.75)])
+    wall_v('wallS', 'x', 5.5 + EXT_T / 2, -7.62, 7.62, EXT_T, M('stucco_ext'), [win(-3.75), win(3.75)])
+    wall_v('wallW', 'z', -7.5 - EXT_T / 2, -5.5, 5.5, EXT_T, M('stucco_ext'), [win(-4.3), door(-2.5, doorLeaf=True)])
+    wall_v('wallE', 'z', 7.5 + EXT_T / 2, -5.5, 5.5, EXT_T, M('stucco_ext'), [win(-2.75), win(2.75)])
     # 内墙
-    wall_v('wallX1', 'x', 0, -7.5, 7.5, INT_T, M('plaster_int'), [door(-3.75), door(3.75)])
-    wall_v('wallZ1', 'z', 0, -5.5, 5.5, INT_T, M('plaster_int'), [{'at': -3, 'w': 1.4, 'y1': 2.15}, door(3)])
+    wall_v('wallX1', 'x', 0, -7.5, 7.5, INT_T, M('paint_int'), [door(-3.75), door(3.75)])
+    wall_v('wallZ1', 'z', 0, -5.5, 5.5, INT_T, M('paint_int'), [{'at': -3, 'w': 1.4, 'y1': 2.15}, door(3)])
     # 窗（北墙仅客厅侧一扇）
     window_v('winN1', 'x', -5.5 - EXT_T / 2, -3.75, 1.4, 0.95, 2.15, True)
     window_v('winS1', 'x', 5.5 + EXT_T / 2, -3.75, 1.4, 0.95, 2.15, True)
@@ -1220,7 +1709,7 @@ def build_villa_v():
     while u <= 0.66:
         yTop = SPRING + RY * math.sqrt(max(0, 1 - (u / AW) ** 2))
         if yTop < ATOP - 0.004:
-            reg(B(INT_T, ATOP - yTop, 0.095, 0, (yTop + ATOP) / 2, -3 + u, M('plaster_int'), f'arch{i}', 0.006))
+            reg(B(INT_T, ATOP - yTop, 0.095, 0, (yTop + ATOP) / 2, -3 + u, M('paint_int'), f'arch{i}', 0.006))
             i += 1
         u += 0.09
     # 地板
@@ -1311,13 +1800,13 @@ ROOMS = [
 # ---------------------------------------------------------------- 二楼+屋顶（并入 villa.glb）
 def build_upper_v():
     # 二楼外墙（yBase=F2）
-    wall_v('u_wallN', 'x', -5.5 - EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'),
+    wall_v('u_wallN', 'x', -5.5 - EXT_T / 2, -7.62, 7.62, EXT_T, M('stucco_ext'),
            [{'at': -3.75, 'w': 1.4, 'y0': 0.95, 'y1': 2.15}], yBase=F2)
-    wall_v('u_wallS', 'x', 5.5 + EXT_T / 2, -7.62, 7.62, EXT_T, M('plaster_ext'),
+    wall_v('u_wallS', 'x', 5.5 + EXT_T / 2, -7.62, 7.62, EXT_T, M('stucco_ext'),
            [{'at': 3.75, 'w': 1.4, 'y0': 0.95, 'y1': 2.15}], yBase=F2)
-    wall_v('u_wallW', 'z', -7.5 - EXT_T / 2, -5.5, 5.5, EXT_T, M('plaster_ext'),
+    wall_v('u_wallW', 'z', -7.5 - EXT_T / 2, -5.5, 5.5, EXT_T, M('stucco_ext'),
            [{'at': -2.75, 'w': 1.4, 'y0': 0.95, 'y1': 2.15}], yBase=F2)
-    wall_v('u_wallE', 'z', 7.5 + EXT_T / 2, -5.5, 5.5, EXT_T, M('plaster_ext'),
+    wall_v('u_wallE', 'z', 7.5 + EXT_T / 2, -5.5, 5.5, EXT_T, M('stucco_ext'),
            [{'at': 2.75, 'w': 1.4, 'y0': 0.95, 'y1': 2.15}], yBase=F2)
     # 二楼窗
     window_v('u_winN', 'x', -5.5 - EXT_T / 2, -3.75, 1.4, 0.95, 2.15, True, yBase=F2)
@@ -1325,9 +1814,9 @@ def build_upper_v():
     window_v('u_winW', 'z', -7.5 - EXT_T / 2, -2.75, 1.4, 0.95, 2.15, True, yBase=F2)
     window_v('u_winE', 'z', 7.5 + EXT_T / 2, 2.75, 1.4, 0.95, 2.15, True, yBase=F2)
     # 二楼内墙
-    wall_v('u_wallX', 'x', 0, -7.5, 7.5, INT_T, M('plaster_int'),
+    wall_v('u_wallX', 'x', 0, -7.5, 7.5, INT_T, M('paint_int'),
            [{'at': -3.75, 'w': 1.05, 'y1': 2.15}, {'at': 3.75, 'w': 1.05, 'y1': 2.15}], yBase=F2)
-    wall_v('u_wallZ', 'z', 0, -5.5, 5.5, INT_T, M('plaster_int'),
+    wall_v('u_wallZ', 'z', 0, -5.5, 5.5, INT_T, M('paint_int'),
            [{'at': -3, 'w': 1.05, 'y1': 2.15}, {'at': 3, 'w': 1.05, 'y1': 2.15}], yBase=F2)
     # 楼板
     quads = [(-7.5, 0, -5.5, 0), (0, 7.5, -4.55, 0), (-7.5, 0, 0, 5.5), (0, 7.5, 0, 5.5)]
@@ -1342,7 +1831,7 @@ def build_upper_v():
         reg(f)
     # 楼梯井北侧的层间封带（F1墙顶2.9与F2墙底3.15之间的外墙空隙，
     # 覆盖整个楼梯井洞口 x 2.9..6.5，否则上楼梯左手边能看到一条缝）
-    reg(B(3.75, 0.25, 0.24, 4.725, 3.025, -5.62, M('plaster_ext'), 'stairwell_band', 0.006))
+    reg(B(3.75, 0.25, 0.24, 4.725, 3.025, -5.62, M('stucco_ext'), 'stairwell_band', 0.006))
     # 楼梯口平台补板
     reg(B(1.0, 0.25, 0.95, 7.0, F2 - 0.125, -5.02, M('slab'), 'u_slab_gate', 0.008))
     # 楼梯
@@ -1364,7 +1853,7 @@ def build_upper_v():
     _apply(hr); reg(hr)
     # 楼梯井南侧半墙（x 0.1..6.45，高1.35——比健身房器械略高，可探看楼梯井）——
     # 仍挡住从储物间/健身房跌落楼梯井；东段 6.45..7.5 留空作为落地进入储物间的出口
-    wall_v('f2_stair_wall', 'x', -4.55, 0.1, 6.45, 0.1, M('plaster_int'), [], yBase=F2, height=1.35)
+    wall_v('f2_stair_wall', 'x', -4.55, 0.1, 6.45, 0.1, M('paint_int'), [], yBase=F2, height=1.35)
     # 坡屋顶
     ridgeY, eaveY = F2 + 2.9 + 2.15, F2 + 2.9
     EZ, EX = 6.35, 8.4
@@ -1380,11 +1869,67 @@ def build_upper_v():
     # 山墙（延伸到屋檐线 ±6.35，斜边与屋面同角，封死山墙端与屋檐间的看天缝隙）
     for ex in (-7.5, 7.5):
         g = mesh_tri(f'gable{ex}', [(ex, eaveY, -6.35), (ex, eaveY, 6.35), (ex, ridgeY, 0)],
-                     [(0, 1, 2)], M('plaster_ext'))
+                     [(0, 1, 2)], M('stucco_ext'))
         reg(g)
     # 烟囱
     reg(B(0.7, 1.7, 0.7, 4.5, ridgeY - 0.15, -1.7, M('chimney'), 'chimney', 0.012))
     reg(B(0.8, 0.1, 0.8, 4.5, ridgeY + 0.72, -1.7, M('stone'), 'chimney_cap', 0.008))
+
+def build_villa_details():
+    """楼体写实升级（2026-09-18）——纯附加节点，原几何零改动：
+    门套：10 个门洞 × 内外两面「双竖梃+门头梃」三件套（trim 白漆木线）；
+    勒脚：外墙四周 18cm 高 stone 石带（外突 2cm，消"白盒坐在草上"）；
+    檐口封板：两坡屋檐 eave 白封板（封住屋面板边缘截面）。
+    归并为 3 个节点（每 mesh 一次 draw call）。基线硬对比见 tools/villa_upgrade_body.py。
+    """
+    TRIM, STONE = M('trim'), M('stone')
+    boards = []
+
+    def casing_x(door_x, faces, y0=0.0, h=2.15, w=1.05):
+        """墙沿 X 走向（厚 z 向）：faces = 门套两面的 z 偏移列表"""
+        jl = w / 2 + 0.035
+        for fz in faces:
+            boards.append(B(0.07, h + 0.07, 0.024, door_x - jl, y0 + (h + 0.07) / 2, fz,
+                            TRIM, 'cas', 0.004))
+            boards.append(B(0.07, h + 0.07, 0.024, door_x + jl, y0 + (h + 0.07) / 2, fz,
+                            TRIM, 'cas', 0.004))
+            boards.append(B(w + 0.21, 0.07, 0.024, door_x, y0 + h + 0.035, fz,
+                            TRIM, 'cas', 0.004))
+
+    def casing_z(door_z, faces_x, y0=0.0, h=2.15, w=1.05):
+        """墙沿 Z 走向（厚 x 向）：faces_x = 门套两面的 x 绝对坐标列表"""
+        jl = w / 2 + 0.035
+        for fx in faces_x:
+            boards.append(B(0.024, h + 0.07, 0.07, fx, y0 + (h + 0.07) / 2, door_z - jl,
+                            TRIM, 'cas', 0.004))
+            boards.append(B(0.024, h + 0.07, 0.07, fx, y0 + (h + 0.07) / 2, door_z + jl,
+                            TRIM, 'cas', 0.004))
+            boards.append(B(0.024, 0.07, w + 0.21, fx, y0 + h + 0.035, door_z,
+                            TRIM, 'cas', 0.004))
+
+    # 1F：wallX1（z=0 内墙）两门 + wallZ1（x=0 内墙）一门 + 正门（外墙两面）
+    casing_x(-3.75, (-0.072, 0.072))
+    casing_x(3.75, (-0.072, 0.072))
+    casing_z(3.0, (-0.072, 0.072))
+    casing_z(-2.5, (-7.752, -7.488), h=2.2)
+    # 2F：u_wallX 两门 + u_wallZ 两门
+    casing_x(-3.75, (-0.072, 0.072), y0=F2)
+    casing_x(3.75, (-0.072, 0.072), y0=F2)
+    casing_z(-3.0, (-0.072, 0.072), y0=F2)
+    casing_z(3.0, (-0.072, 0.072), y0=F2)
+    reg(join(boards, 'villa_casings'))
+
+    # 勒脚（外墙四条石带，角落自然搭接）
+    plinth = [B(15.48, 0.18, 0.04, 0, 0.09, -5.74, STONE, 'plinthN', 0.008),
+              B(15.48, 0.18, 0.04, 0, 0.09, 5.74, STONE, 'plinthS', 0.008),
+              B(0.04, 0.18, 11.48, -7.74, 0.09, 0, STONE, 'plinthW', 0.008),
+              B(0.04, 0.18, 11.48, 7.74, 0.09, 0, STONE, 'plinthE', 0.008)]
+    reg(join(plinth, 'villa_plinth'))
+
+    # 檐口封板（两坡屋檐，盖住屋面板边缘截面）
+    fascia = [B(16.9, 0.16, 0.05, 0, F2 + 2.9 + 0.02, -6.38, TRIM, 'fasciaN', 0.006),
+              B(16.9, 0.16, 0.05, 0, F2 + 2.9 + 0.02, 6.38, TRIM, 'fasciaS', 0.006)]
+    reg(join(fascia, 'roof_fascia'))
 
 # ---------------------------------------------------------------- 庭院（yard.glb）
 def build_yard_v():
@@ -1425,11 +1970,14 @@ def build_yard_v():
     tree('tree1', -9.6, -6.4, 1.1)
     tree('tree2', 9.8, 6.4, 1.0)
     tree('tree3', 9.9, -6.2, 0.85)
-    # 花丛
+    # 花丛（确定性伪随机：装饰用途，位置/大小由 i 的散列决定，可重现且无安全面）
     for i in range(14):
-        fx, fz = (random.random() - 0.5) * 20, (random.random() - 0.5) * 14
+        h1 = abs(math.sin(i * 127.1 + 311.7)) % 1
+        h2 = abs(math.sin(i * 269.5 + 183.3)) % 1
+        h3 = abs(math.sin(i * 419.2 + 371.9)) % 1
+        fx, fz = (h1 - 0.5) * 20, (h2 - 0.5) * 14
         if abs(fx) < 8.6 and abs(fz) < 6.4: continue
-        reg(SPH(0.09 + random.random() * 0.07, fx, 0.12, fz,
+        reg(SPH(0.09 + h3 * 0.07, fx, 0.12, fz,
                 M(f'flower{(i % 4) + 1}'), f'wildfl{i}', 8, 6))
     # 草地
     g = PLANE(60, 60, 0, -0.01, 0, M('grass'), 'lawn', uv_scale=(30, 30))
@@ -1522,13 +2070,18 @@ def export_bucket(key, out_dir, filename):
 
 def main():
     global CUR
+    # --skip-full：单件重建脚本（tools/*_v2_body.py）import 本模块时传此参数，
+    # 跳过全量建模与导出，由调用方自己挑 builder 跑（避免为一件事重写全部 50 个 glb）
+    if '--skip-full' in ARGS:
+        print('[skip] --skip-full：单件模式，main() 全量导出已跳过')
+        return
     # —— 家具 ——
     for key, fn in PIECE_BUILDERS.items():
         CUR = key
         fn()
     CUR = None
     # —— 别墅 / 庭院 / 物品 / 角色 ——
-    CUR = 'villa'; build_villa_v(); build_upper_v()
+    CUR = 'villa'; build_villa_v(); build_upper_v(); build_villa_details()
     CUR = 'yard'; build_yard_v()
     for key, fn in ITEM_BUILDERS.items():
         CUR = f'item_{key}'

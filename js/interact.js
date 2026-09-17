@@ -22,12 +22,13 @@ const OPENABLE_DEFS = {
     { key: 'cab', part: 'cabDoor', kind: 'hinge', hinge: [-1.16, 0.25, 0.315], axis: 'y', open: -1.8 },
   ],
   wardrobe: [
-    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.575, 1.0, 0.315], axis: 'y', open: -1.8 },
-    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.575, 1.0, 0.315], axis: 'y', open: 1.8 },
+    // v2 全覆盖门板：铰链=左门左缘 x=-0.597，z=门板中心 0.309（19mm 铰链外凸）
+    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.597, 1.0, 0.309], axis: 'y', open: -1.8 },
+    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.597, 1.0, 0.309], axis: 'y', open: 1.8 },
   ],
   wardrobe2: [
-    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.575, 1.0, 0.315], axis: 'y', open: -1.8 },
-    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.575, 1.0, 0.315], axis: 'y', open: 1.8 },
+    { key: 'doorL', slots: ['hang', 'topShelf'], part: 'doorL', kind: 'hinge', hinge: [-0.597, 1.0, 0.309], axis: 'y', open: -1.8 },
+    { key: 'doorR', slots: ['hang', 'topShelf'], part: 'doorR', kind: 'hinge', hinge: [0.597, 1.0, 0.309], axis: 'y', open: 1.8 },
   ],
   nightstand: [
     { key: 'drawer1', part: 'drawer', kind: 'slide', axis: 'z', open: 0.3 },
@@ -92,6 +93,10 @@ export class Interaction {
     this.ctx = ctx;
     this.pieces = pieces;
     this.onPickup = onPickup;
+    // 联机找家（2026-09-18 方案①）：搜查回调由 main 注入；藏点在服务端，只答中/不中
+    this.onOnlineCheck = null;    // async (pieceId, slotKey) → {hit, itemId?, expired?}
+    this.onOnlineExpired = null;  // 服务端计时到 → 结算
+    this.onOnlineToast = null;    // 搜查提示文案
     this.player = player;
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = 2.6;
@@ -192,6 +197,13 @@ export class Interaction {
   _bindKeys() {
     this._onKey = (e) => {
       if (e.repeat) return;   // 按住不连发（E 开一次，Q 关一次）
+      if (e.code === 'KeyR') {
+        // 联机找家：R 搜查当前家具的直查槽位（书页间走"抽书自动搜查"路径）
+        if (this.hideMode || !this.enabled || this.inspecting || !this.onOnlineCheck) return;
+        const hit = this._lastHit;
+        if (hit && hit.type === 'piece' && hit.dist < 2.5) this._onlineSearch(hit.piece);
+        return;
+      }
       if (e.code === 'KeyQ') {
         if (this.hideMode || !this.enabled || this.inspecting) return;
         // Q：关上当前打开的抽屉/书本（全局同时只开一个）
@@ -266,6 +278,61 @@ export class Interaction {
     if (e.target === v) return;
     e.target = v;
     if (notify && this.onEntryToggle) this.onEntryToggle(e, !!open);
+    if (open && this.onOnlineCheck) this._autoCheckEntry(e);   // 联机找家：开容器即搜查
+  }
+
+  // ---------- 联机找家：搜查 ----------
+  _onlineMsg(t) { if (this.onOnlineToast) this.onOnlineToast(t); }
+
+  async _onlineCheck(pieceId, slotKey) {
+    try {
+      const r = await this.onOnlineCheck(pieceId, slotKey);
+      if (r && r.expired && this.onOnlineExpired) this.onOnlineExpired();
+      return r || { hit: false };
+    } catch {
+      return { hit: false, error: true };
+    }
+  }
+
+  // 开容器（抽屉/柜门/盖子/书本）时自动搜查其暴露的槽位；命中即把物品生成进去
+  _autoCheckEntry(e) {
+    const keys = (e.slotKeys && e.slotKeys.length) ? e.slotKeys
+      : (e.kind === 'book' ? ['pages'] : []);        // 书本条目无 slotKeys：虚拟页间槽
+    for (const key of keys) {
+      const slotKey = e.kind === 'book' ? 'pages' : key;
+      this._onlineCheck(e.pieceId, slotKey).then(r => {
+        if (r.hit) {
+          this._spawnFind(e.pieceId, slotKey, r.itemId,
+            e.kind === 'book' ? Number(e.key.split(':')[1]) : undefined);
+        }
+      });
+    }
+  }
+
+  // R 键：搜查当前家具的直查槽位（书页间不在 R 内枚举——抽出哪本查哪本）
+  async _onlineSearch(piece) {
+    const slots = piece.slots.filter(s => s.type !== 'pages');
+    if (!slots.length) {
+      this._onlineMsg(`${piece.def.name}：没有可搜的格子，翻翻抽屉和柜门`);
+      return;
+    }
+    this._onlineMsg(`正在搜查${piece.def.name}…`);
+    for (const s of slots) {
+      const r = await this._onlineCheck(piece.def.id, s.key);
+      if (r.hit) { this._spawnFind(piece.def.id, s.key, r.itemId); return; }
+      if (r.error) return;
+    }
+    this._onlineMsg(`${piece.def.name}：这里没有藏东西`);
+  }
+
+  // 服务端判定命中：物品落进槽位（有落入动画），随后按 E 走本地拾取流程
+  _spawnFind(pieceId, slotKey, itemId, bookIndex) {
+    const r = this.placeItem(pieceId, slotKey, itemId,
+      bookIndex != null ? { bookIndex } : {});
+    if (r.ok) {
+      const item = itemById(itemId);
+      this._onlineMsg(`💥 有发现！「${item.name}」就在里面 —— 按 <b>E</b> 拿起来`);
+    }
   }
 
   // 抽屉/书本全局单开：开 entry 前先合上其他所有已开的抽屉与书本
@@ -465,7 +532,9 @@ export class Interaction {
           } else if (hit.piece.slots.some(s => s.type === 'interior' || s.type === 'soil')) {
             text = `按 <b>E</b> 检查${hit.piece.def.name}`;
           } else {
-            text = hit.piece.def.name;
+            text = this.onOnlineCheck
+              ? `${hit.piece.def.name} —— 按 <b>R</b> 搜查`
+              : hit.piece.def.name;
           }
         }
       }
@@ -477,6 +546,12 @@ export class Interaction {
 
   // ---------- 检查特写（水杯/果盘/垃圾桶/花盆等直视容器） ----------
   _enterInspect(piece, slot) {
+    if (this.onOnlineCheck) {
+      // 联机找家：检查特写即搜查该格，命中则物品直接出现在格内（特写提示会随之变为"藏着…"）
+      this._onlineCheck(piece.def.id, slot.key).then(r => {
+        if (r.hit) this._spawnFind(piece.def.id, slot.key, r.itemId);
+      });
+    }
     const cam = this.ctx.camera;
     if (this.player) this.player.frozen = true;
     const target = new THREE.Vector3(slot.worldPos.x, slot.worldPos.y + 0.34, slot.worldPos.z + 0.22);
