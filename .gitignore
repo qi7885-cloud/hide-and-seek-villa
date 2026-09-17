@@ -13,6 +13,10 @@ Desktop.ini
 # Netlify CLI 本地状态
 .netlify/
 
+# Blender 源文件与自动备份（精模资产，不进公开仓库、不上公网）
+*.blend
+*.blend1
+
 # Node
 node_modules/
 .mimosa/

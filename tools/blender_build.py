@@ -234,6 +234,8 @@ def _build_materials():
         # 织物
         'velvet':      Ptex('velvet', tex_fabric((0.37, 0.47, 0.32), weave=0.03), 0.85),
         'velvet_d':    Ptex('velvet_d', tex_fabric((0.31, 0.41, 0.27), weave=0.03), 0.85),
+        # 缝/凹槽专用：比面料更暗、更糙，且织纹更粗（缝比面暗 —— 与飞机面板缝同一条道理）
+        'velvet_seam': Ptex('velvet_seam', tex_fabric((0.20, 0.27, 0.18), weave=0.06), 0.92),
         'cream':       Ptex('cream', tex_fabric((0.91, 0.88, 0.82)), 0.85),
         'cream_d':     Ptex('cream_d', tex_fabric((0.84, 0.80, 0.72)), 0.85),
         'teddy':       Ptex('teddy', tex_fabric((0.85, 0.79, 0.68), weave=0.08), 0.95),
@@ -501,25 +503,105 @@ def reg(o):
 
 # ---------------------------------------------------------------- 家具（全部尺寸取自 furniture.js）
 def b_sofa():
-    # 绿丝绒沙发：木脚+圆润底座+三坐垫+靠枕+盖毯
+    """法式圆扶手三人沙发（v2 · 2026-09-17 改款）
+    尺寸锚点（必须守住，取自 furniture.js 与旧版 GLB）：
+      占地 1.90 × 0.85 m；总高 ≤ 0.905；原点=占地中心+地面；正面朝 three +z。
+      腿部净空 0.145 —— 隐藏槽位 cap 高 0.11 @ y0.07 要求净空 ≥0.13，别改矮。
+    分层：腿 0→0.145 / 围裙 0.145→0.205 / 坐箱 0.205→0.44 / 坐垫 0.446→0.586 /
+          靠背顶 0.844 / 扶手圆枕顶 0.74（靠背比扶手高 10cm，是这种款型的比例特征）。
+    做工逻辑：所有缝、凹槽、坐垫间隙一律换成更暗更糙的 velvet_seam；
+             坐垫底部抬离坐箱 0.006、盖毯抬离扶手 0.005 —— 防共面闪烁。
+    坐垫：只留「后 / 左 / 右」三条滚边 —— 中缝与前滚边已于 2026-09-17 按反馈删除。
+    节点数：碎件先烘修改器再归并成 18 个对象（每个 mesh 在游戏里是一次 draw call，
+           旧版 15 个；不烘就合并会让粗倒角套到细滚边上烂面）。
+    """
+    V, VD, SEAM = M('velvet'), M('velvet_d'), M('velvet_seam')
+    CREAM, CREAM_D, WD = M('cream'), M('cream_d'), M('wood_dark')
+    P = {}                                              # 归并桶：目标对象名 -> [零件…]
+
+    def put(key, o):
+        P.setdefault(key, []).append(o)
+
+    # ---- 1) 四条车木腿（0→0.145）：铜脚套 → 球足 → 束腰 → 柱身 → 顶盘 ----
     for sx in (-1, 1):
         for sz in (-1, 1):
-            reg(CONE(0.032, 0.022, 0.14, sx * 0.89, 0.07, sz * 0.365, M('wood_dark'), f'leg{sx}{sz}', 12))
-    reg(B(1.9, 0.30, 0.85, 0, 0.29, 0, M('velvet'), 'sofa_base', bevel=0.045))
-    reg(B(1.9, 0.45, 0.22, 0, 0.62, -0.315, M('velvet_d'), 'sofa_back', bevel=0.05))
-    reg(B(0.22, 0.32, 0.8, -0.84, 0.58, 0.02, M('velvet_d'), 'armL', bevel=0.05))
-    reg(B(0.22, 0.32, 0.8, 0.84, 0.58, 0.02, M('velvet_d'), 'armR', bevel=0.05))
-    for i in range(3):
-        # 坐垫底部抬离底座面 0.004，避免与底座顶面共面闪烁
-        reg(B(0.55, 0.14, 0.7, -0.6 + i * 0.6, 0.514, 0.05, M('cream'), f'cush{i}', bevel=0.045))
-    p1 = B(0.4, 0.36, 0.13, -0.5, 0.72, -0.24, M('pillow'), 'throwL', bevel=0.03)
-    p1.rotation_euler = (-0.15, 0, 0); _apply(p1); reg(p1)
-    p2 = B(0.4, 0.36, 0.13, 0.28, 0.72, -0.24, M('cream_d'), 'throwR', bevel=0.03)
-    p2.rotation_euler = (-0.15, 0, 0); _apply(p2); reg(p2)
-    # 盖毯底部抬离扶手顶面，避免共面闪烁
-    t1 = B(0.5, 0.04, 0.62, 0.62, 0.766, 0.1, M('white'), 'blanketA', bevel=0.015)
-    t1.rotation_euler = (0, -0.06, 0); _apply(t1); reg(t1)
-    reg(B(0.5, 0.3, 0.04, 0.62, 0.58, 0.4, M('white'), 'blanketB', bevel=0.015))
+            k = f'leg{sx}{sz}'
+            lx, lz = sx * 0.845, sz * 0.345
+            put(k, CYL(0.026, 0.014, lx, 0.007, lz, M('gold'), f'{k}_ferrule', 16))
+            put(k, SPH(0.024, lx, 0.030, lz, WD, f'{k}_foot', 16, 10))
+            put(k, CONE(0.019, 0.030, 0.052, lx, 0.076, lz, WD, f'{k}_waist', 16))
+            put(k, CYL(0.030, 0.036, lx, 0.117, lz, WD, f'{k}_shaft', 16))
+            put(k, CYL(0.037, 0.016, lx, 0.139, lz, WD, f'{k}_cap', 16))
+
+    # ---- 2) 围裙 + 暗缝 + 坐箱 ----
+    put('sofa_apron', B(1.90, 0.060, 0.84, 0, 0.175, 0, VD, 'sofa_apron', bevel=0.012))
+    put('sofa_apron', B(1.88, 0.014, 0.82, 0, 0.205, 0, SEAM, 'sofa_apron_seam', bevel=0.004))
+    put('sofa_base', B(1.90, 0.235, 0.85, 0, 0.3225, 0, V, 'sofa_base', bevel=0.040))
+
+    # ---- 3) 三块坐垫（0.446→0.586）+ 三条滚边（后/左/右）+ 垫间暗缝 ----
+    #      2026-09-17 按反馈删掉了「前滚边」与「中缝」——原来是坐垫前沿一条横贯垫宽的
+    #      白圆管 + 垫面正中一条从后贯到前的凸起白细条；坐垫正面现在留光面。
+    #      （改动同源：tools/sofa_trim_seam.py 对已 join 的网格做连通块级删除）
+    CUSH_D = 0.710          # 垫深（不含滚边）
+    for i, cx in enumerate((-0.494, 0.0, 0.494)):
+        k = f'cush{i}'
+        put(k, B(0.482, 0.140, CUSH_D, cx, 0.516, 0.05, CREAM, k, bevel=0.042))
+        put(k, B(0.482, 0.022, 0.022, cx, 0.578, -0.301, CREAM_D, f'{k}_welt_b', bevel=0.010))
+        put(k, B(0.022, 0.022, 0.702, cx - 0.235, 0.578, 0.05, CREAM_D, f'{k}_welt_l', bevel=0.010))
+        put(k, B(0.022, 0.022, 0.702, cx + 0.235, 0.578, 0.05, CREAM_D, f'{k}_welt_r', bevel=0.010))
+    for sx in (-1, 1):
+        put('sofa_cush_gap',
+            B(0.012, 0.026, 0.700, sx * 0.2465, 0.576, 0.05, SEAM, f'sofa_cush_gap_{sx}', bevel=0.004))
+
+    # ---- 4) 靠背：暗色背板（填三块面板之间的缝）+ 三块独立面板后倾 0.10 rad + 腰枕圆枕
+    #       z 值是为了"后倾后最靠后的角点仍不超过 0.425"反推的，动倾角就要重算 ----
+    bd = B(1.48, 0.46, 0.04, 0, 0.625, -0.378, SEAM, 'sofa_backboard', bevel=0.008)
+    bd.rotation_euler = (-0.10, 0, 0); _apply(bd); put('sofa_back', bd)
+    for i, bx in enumerate((-0.497, 0.0, 0.497)):
+        bp = B(0.485, 0.40, 0.20, bx, 0.635, -0.303, VD, f'sofa_back{i}', bevel=0.045)
+        bp.rotation_euler = (-0.10, 0, 0); _apply(bp); put('sofa_back', bp)
+    lum = CYL(0.045, 1.46, 0, 0.505, -0.212, VD, 'sofa_lumbar_roll', 20)
+    lum.rotation_euler = (0, math.pi / 2, 0); _apply(lum); put('sofa_lumbar_roll', lum)
+
+    # ---- 5) 卷臂：侧板 + 前后向圆枕 + 前卷盘 ----
+    for sx in (-1, 1):
+        n = 'L' if sx < 0 else 'R'
+        put(f'arm{n}', B(0.22, 0.36, 0.80, sx * 0.840, 0.50, 0.0, VD, f'arm{n}_panel', bevel=0.045))
+        ar = CYL(0.090, 0.80, sx * 0.840, 0.650, 0.0, VD, f'arm{n}_roll', 24)
+        ar.rotation_euler = (math.pi / 2, 0, 0); _apply(ar); put(f'arm{n}', ar)
+        ad = CYL(0.102, 0.040, sx * 0.840, 0.650, 0.390, VD, f'arm{n}_scroll', 24)
+        ad.rotation_euler = (math.pi / 2, 0, 0); _apply(ad); put(f'arm{n}', ad)
+
+    # ---- 6) 靠枕 + 盖毯（底部抬离支撑面，避免共面闪烁） ----
+    p1 = B(0.40, 0.36, 0.14, -0.44, 0.716, -0.235, M('pillow'), 'throwL', bevel=0.030)
+    p1.rotation_euler = (-0.15, 0, 0); _apply(p1); put('throwL', p1)
+    p2 = B(0.40, 0.36, 0.14, 0.30, 0.716, -0.235, CREAM_D, 'throwR', bevel=0.030)
+    p2.rotation_euler = (-0.15, 0, 0); _apply(p2); put('throwR', p2)
+    t1 = B(0.52, 0.045, 0.64, 0.62, 0.775, 0.06, M('white'), 'blanketA', bevel=0.014)
+    t1.rotation_euler = (0, -0.05, 0); _apply(t1); put('blanketA', t1)
+    put('blanketB', B(0.52, 0.33, 0.045, 0.62, 0.605, 0.40, M('white'), 'blanketB', bevel=0.014))
+
+    # ---- 7) 烘修改器后归并（合并不继承非活动对象的修改器，必须先烘） ----
+    def bake(o):
+        _unselect()
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        for md in list(o.modifiers):
+            bpy.ops.object.modifier_apply(modifier=md.name)
+        return o
+
+    global CUR
+    keep, CUR = CUR, None            # 临时清空，免去名字被追加 __桶名 后缀
+    merged = []
+    for nm, lst in P.items():
+        for o in lst:
+            bake(o)
+        m = join(lst, nm) if len(lst) > 1 else lst[0]
+        m.name = nm
+        merged.append(m)
+    CUR = keep
+    for m in merged:
+        reg(m)
 
 def b_coffee_table():
     for sx in (-1, 1):
@@ -529,6 +611,11 @@ def b_coffee_table():
     reg(B(0.95, 0.03, 0.45, 0, 0.14, 0, M('wood'), 'shelf', bevel=0.008))
 
 def b_tv_cabinet():
+    # 四条柜腿（0→0.06，与 furniture.js 回退 builder 的 legs4(1.6,0.42,0.06) 对齐；
+    # 漏建会让柜体底面停在 0.06，视觉上悬空）
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            reg(B(0.06, 0.06, 0.06, sx * 0.74, 0.03, sz * 0.15, M('wood_dark'), f'tvleg{sx}{sz}', 0.006))
     # 空心柜体 + 中层隔板（上下两层，与吊柜一致）
     HOLLOW(1.6, 0.44, 0.42, 0, 0.28, 0, M('wood'), 'tv_body', t=0.02)
     reg(B(1.5, 0.02, 0.34, 0, 0.28, 0, M('wood_dark'), 'tv_shelf', 0.004))

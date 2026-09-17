@@ -67,8 +67,12 @@ for fn in sorted(os.listdir(PIECES)):
     if key == 'bookshelf' and parts:
         print('      books:', sorted(parts)[:4], f'... total {len(parts)}')
 
-for fn in ('villa.glb', 'yard.glb', 'avatar.glb'):
+# 整场景大件（avatar.glb 已在 M25 随死代码清理删除，不要再列回来）
+for fn in ('villa.glb', 'yard.glb'):
     path = os.path.join(ROOT, 'models', fn)
+    if not os.path.exists(path):
+        print(f'[SKIP] {fn:20s} 文件不存在，跳过')
+        continue
     gj = glb_json(path)
     nodes = [n.get('name', '') for n in gj.get('nodes', [])]
     mn, mx = aabb_from_nodes(gj)

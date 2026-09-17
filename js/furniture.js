@@ -52,23 +52,42 @@ function drawerBox(w, h, d, frontColor, x, y, z) {
 // 每个 builder 返回 { group, parts } ；parts 里放需要开合动画的节点（M4 用）
 
 function sofa() {
-  // 绿色丝绒沙发 + 奶油抱枕 + 白色盖毯（参考法式客厅）
+  // 法式圆扶手三人沙发（与 models/pieces/sofa.glb 同轮廓的兜底版，GLB 加载失败时使用）
+  // 尺寸锚点：占地 1.90 x 0.85、总高 0.855、原点=占地中心+地面、正面朝 +z、底部净空 0.145
   const g = new THREE.Group(), P = {};
-  const VELVET = 0x5e7a52, VELVET_D = 0x506a46, CREAM = 0xe8e2d2;
-  legs4(g, 1.9, 0.85, 0.14, 0x4a3826);
-  box(g, 1.9, 0.3, 0.85, VELVET, 0, 0.29, 0);                    // 底座
-  box(g, 1.9, 0.45, 0.22, VELVET_D, 0, 0.62, -0.315);            // 靠背
-  box(g, 0.22, 0.32, 0.8, VELVET_D, -0.84, 0.58, 0.02);          // 扶手左
-  box(g, 0.22, 0.32, 0.8, VELVET_D, 0.84, 0.58, 0.02);           // 扶手右
-  for (let i = 0; i < 3; i++) box(g, 0.55, 0.14, 0.7, CREAM, -0.6 + i * 0.6, 0.51, 0.05); // 坐垫
-  // 丝绒竖向拉槽（坐垫分缝感）
-  for (let i = 0; i < 3; i++) box(g, 0.56, 0.02, 0.71, VELVET, -0.6 + i * 0.6, 0.585, 0.05);
-  // 靠枕
-  box(g, 0.4, 0.36, 0.13, CREAM, -0.5, 0.72, -0.24).rotation.x = -0.15;
-  box(g, 0.4, 0.36, 0.13, 0xd8cfba, 0.28, 0.72, -0.24).rotation.x = -0.15;
-  // 白色针织盖毯（搭在扶手垂下来）
-  box(g, 0.5, 0.04, 0.62, 0xf2ede0, 0.62, 0.76, 0.1).rotation.z = 0.06;
-  box(g, 0.5, 0.3, 0.04, 0xf2ede0, 0.62, 0.58, 0.4);
+  const VELVET = 0x5e7a52, VELVET_D = 0x506a46, CREAM = 0xe8e2d2, CREAM_D = 0xd2c9b4;
+  const SEAM = 0x37432b, WOOD = 0x4a3826, GOLD = 0xb99a4a;
+  // 车木腿（铜脚套 0→0.014 + 柱身 0.014→0.145）
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    box(g, 0.062, 0.028, 0.062, GOLD, sx * 0.845, 0.014, sz * 0.345);
+    box(g, 0.070, 0.117, 0.070, WOOD, sx * 0.845, 0.0865, sz * 0.345);
+  }
+  box(g, 1.90, 0.067, 0.84, VELVET_D, 0, 0.1785, 0);             // 围裙
+  box(g, 1.86, 0.012, 0.82, SEAM, 0, 0.205, 0.01);               // 围裙下暗缝
+  box(g, 1.90, 0.235, 0.85, VELVET, 0, 0.3225, 0);               // 坐箱
+  for (const cx of [-0.494, 0, 0.494]) {
+    box(g, 0.482, 0.140, 0.710, CREAM, cx, 0.516, 0.05);         // 坐垫
+    box(g, 0.482, 0.022, 0.022, CREAM_D, cx, 0.578, -0.301);     // 后滚边
+    box(g, 0.022, 0.022, 0.702, CREAM_D, cx - 0.235, 0.578, 0.05);
+    box(g, 0.022, 0.022, 0.702, CREAM_D, cx + 0.235, 0.578, 0.05);
+  }
+  for (const sx of [-1, 1]) box(g, 0.012, 0.026, 0.70, SEAM, sx * 0.2465, 0.576, 0.05); // 垫间暗缝
+  // 靠背：暗色背板 + 三块后倾 0.10 rad 的独立面板 + 腰枕圆枕
+  box(g, 1.48, 0.46, 0.04, SEAM, 0, 0.65, -0.30).rotation.x = -0.10;
+  for (const bx of [-0.497, 0, 0.497]) {
+    const bp = box(g, 0.485, 0.40, 0.20, VELVET_D, bx, 0.635, -0.237);
+    bp.rotation.x = -0.10;
+  }
+  const lum = cyl(g, 0.045, 1.46, VELVET_D, 0, 0.505, -0.212, 20);
+  lum.rotation.z = Math.PI / 2;
+  // 卷臂：侧板 + 前后向圆枕 + 前卷盘
+  for (const sx of [-1, 1]) {
+    box(g, 0.22, 0.36, 0.80, VELVET_D, sx * 0.840, 0.50, 0.0);
+    const roll = cyl(g, 0.090, 0.80, VELVET_D, sx * 0.840, 0.650, 0.0, 20);
+    roll.rotation.x = Math.PI / 2;
+    const scroll = cyl(g, 0.102, 0.040, VELVET_D, sx * 0.840, 0.650, 0.390, 20);
+    scroll.rotation.x = Math.PI / 2;
+  }
   return { group: g, parts: P };
 }
 
@@ -92,11 +111,12 @@ function tvCabinet() {
 }
 
 function tv() {
+  // 与 tv.glb 同尺寸: 屏宽1.45 总高1.09(含脚架) 厚0.26
   const g = new THREE.Group();
-  box(g, 0.5, 0.04, 0.25, C.dark, 0, 0.02, 0);
-  box(g, 0.08, 0.12, 0.08, C.dark, 0, 0.08, 0);
-  box(g, 1.15, 0.66, 0.05, C.screen, 0, 0.46, 0);
-  box(g, 1.05, 0.56, 0.01, 0x2e3a4a, 0, 0.46, 0.03);             // 屏幕
+  box(g, 0.38, 0.26, 0.014, C.metal, 0, 0.007, 0);                // 拉铝底板
+  box(g, 0.08, 0.05, 0.24, C.metal, 0, 0.13, 0);                  // 支架颈
+  box(g, 1.45, 0.82, 0.04, C.dark, 0, 0.66, 0);                   // 机身
+  box(g, 1.35, 0.72, 0.01, C.screen, 0, 0.66, 0.025);             // 屏面
   return { group: g, parts: {} };
 }
 
@@ -590,7 +610,7 @@ export const CATALOG = [
       { key: 'cabL', type: 'interior', name: '左柜内', cap: [0.6, 0.18, 0.3], offset: [-0.4, 0.17, 0] },
       { key: 'cabR', type: 'interior', name: '右柜内', cap: [0.6, 0.18, 0.3], offset: [0.4, 0.17, 0] },
     ] },
-  { id: 'tv', name: '电视', room: 'living', pos: [-5.75, 0.56, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
+  { id: 'tv', name: '电视', room: 'living', pos: [-5.75, 0.52, -5.23], rotY: 0, build: tv, collide: false, slots: [] },
   { id: 'plant', name: '盆栽', room: 'living', pos: [-0.7, 0, -4.9], rotY: 0, build: plant,
     slots: [{ key: 'soil', type: 'soil', name: '花盆土里', cap: [0.22, 0.05, 0.22], offset: [0, 0.285, 0] }] },
   { id: 'floorLamp', name: '落地灯', room: 'living', pos: [-1.25, 0, -0.3], rotY: 0, build: floorLamp, slots: [] },
