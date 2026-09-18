@@ -183,6 +183,7 @@
 ## 7. 调试与测试方法
 
 - 浏览器控制台 `window.__game` 暴露全部模块：`pieces/interact/game/player/godCam/colliders` 等。
+- **预览/验证以程序化检查为主（用户要求，2026-09-18）**：`__errors`、phase、节点坐标等；工作过程中可以随手截图自查，但**任务收尾的总结里不要附截图**（用户明确要求）。
 - 模拟藏匿：`__game.interact.placeItem('cup','inner','note')`；开合：`__game.interact.togglePiece('wardrobe',true)`；快进回合：`game.confirmHide(); game.beginSeek()`。
 - 上帝相机截视角：临时定义 `__view(cam,tgt)` 反推球坐标设 `godCam.azimuth/polar/dist`（polar=acos(dy/dist)，azimuth=atan2(dx,dz)）。
 - 环境有浏览器自动化（ZCode 的 IAB + node_repl），直接开 http://127.0.0.1:8080 或线上地址实测截图。
