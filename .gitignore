@@ -21,3 +21,6 @@ Desktop.ini
 node_modules/
 .mimosa/
 __pycache__/
+server.js
+HANDOFF.md
+tools/
