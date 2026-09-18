@@ -1,0 +1,15 @@
+# Cloudflare Pages 配置（联机后端 = Pages Functions + Workers KV）
+# 与 Netlify 并存的第二部署平台；netlify/ 目录在 CF 侧不部署（见 .assetsignore）
+name = "hide-and-seek-villa"
+pages_build_output_dir = "."
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+production_branch = "master"
+
+# 联机房间存储（24h TTL 在写入时按房间带上）
+kv_namespaces = [
+  { binding = "ROOMS", id = "58e026dd6a044f25bf8b109205c44286" }
+]
+
+# 静态资源排除（wrangler pages deploy 遵循 .assetsignore）
+# 另见 .assetsignore：server.js/HANDOFF/tools/netlify 等敏感与非运行时文件不上传

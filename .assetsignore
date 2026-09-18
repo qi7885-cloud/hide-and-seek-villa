@@ -1,0 +1,19 @@
+# Cloudflare Pages 部署排除清单（wrangler pages deploy 遵循本文件）
+# 注意：functions/ 与 core/ 不排除——它们是函数打包源（源码本就公开在 GitHub）
+# 敏感/非运行时文件不上 CF（Netlify 侧由 _redirects 404 兜底，双平台双保险）
+node_modules
+netlify
+tools
+server.js
+HANDOFF.md
+netlify.toml
+wrangler.toml
+.netlify
+.assetsignore
+package.json
+package-lock.json
+启动游戏.bat
+*.blend
+*.blend1
+*.log
+_redirects
