@@ -10,8 +10,9 @@ const _tmpVec = new THREE.Vector3();
 // kind: hinge=铰链门 slide=抽屉 book=书本抽出翻开 prop=直接动某节点 lift=掀地毯
 const OPENABLE_DEFS = {
   tvCabinet: [
-    { key: 'cabL', part: 'doorL', kind: 'hinge', hinge: [-0.76, 0.28, 0.215], axis: 'y', open: -1.9 },
-    { key: 'cabR', part: 'doorR', kind: 'hinge', hinge: [0.76, 0.28, 0.215], axis: 'y', open: 1.9 },
+    // v2 全覆盖门板：门缘从 ±0.76 移到 ±0.798、门板外凸到 z 0.225，铰链随门缘/门板中心同步
+    { key: 'cabL', part: 'doorL', kind: 'hinge', hinge: [-0.798, 0.28, 0.225], axis: 'y', open: -1.9 },
+    { key: 'cabR', part: 'doorR', kind: 'hinge', hinge: [0.798, 0.28, 0.225], axis: 'y', open: 1.9 },
   ],
   fridge: [
     { key: 'door', slots: ['inner', 'freezer'], part: 'door', kind: 'hinge', hinge: [-0.375, 0.89, 0.35], axis: 'y', open: -1.9 },

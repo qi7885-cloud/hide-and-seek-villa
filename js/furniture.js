@@ -116,10 +116,10 @@ function tvCabinet() {
   const g = new THREE.Group(), P = {};
   legs4(g, 1.6, 0.42, 0.06, C.woodDark);
   box(g, 1.6, 0.44, 0.42, C.wood, 0, 0.28, 0);
-  // 两扇柜门（M4 可打开）
-  P.doorL = box(g, 0.72, 0.36, 0.03, C.woodLight, -0.4, 0.28, 0.215);
-  P.doorR = box(g, 0.72, 0.36, 0.03, C.woodLight, 0.4, 0.28, 0.215);
-  box(g, 0.05, 0.06, 0.05, C.dark, 0, 0.28, 0.235);              // 把手座
+  // 两扇柜门（M4 可打开；v2 全覆盖门板与 tv_cabinet.glb 一致：铺满前脸，缝 2-4mm）
+  P.doorL = box(g, 0.796, 0.436, 0.03, C.woodLight, -0.4, 0.28, 0.225);
+  P.doorR = box(g, 0.796, 0.436, 0.03, C.woodLight, 0.4, 0.28, 0.225);
+  box(g, 0.05, 0.06, 0.05, C.dark, 0, 0.28, 0.25);               // 把手座
   return { group: g, parts: P };
 }
 
