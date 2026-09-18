@@ -6,8 +6,9 @@ export class FPPlayer {
     this.camera = camera;
     this.dom = dom;
     this.pos = new THREE.Vector3(0, 0, 0);   // 脚底位置
+    this.spawnPitch = -0.10;   // 出生/传送的初始俯仰：微俯视（准星落在门腰/行走高度，不再对着天花板）
     this.yaw = 0;
-    this.pitch = 0;
+    this.pitch = this.spawnPitch;
     this.vy = 0;
     this.radius = 0.32;
     this.eyeHeight = 1.62;
@@ -44,7 +45,7 @@ export class FPPlayer {
   teleport(pos, yaw = 0) {
     this.pos.copy(pos);
     this.yaw = yaw;
-    this.pitch = 0;
+    this.pitch = this.spawnPitch;
     this.vy = 0;
   }
 
