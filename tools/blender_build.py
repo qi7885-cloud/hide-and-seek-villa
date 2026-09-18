@@ -1571,42 +1571,86 @@ def door_leaf_v(key, axis, at, at_along, w, y1, open_angle=1.9):
     reg(g)
     return g
 
-def room_trim(key, r):
-    """石膏线+踢脚线（跳过门洞，与 realism.js 一致）"""
-    INSET, MOLD_H, BASE_H = 0.05, 0.1, 0.12
-    DOOR_GAPS = [
+def room_trim(key, r, yBase=0.0, door_gaps=None, crown=True, side_over=None):
+    """石膏线+踢脚线（跳过门洞）。
+    v2(2026-09-19)：压条背面嵌入墙内皮 5mm——外墙内皮=房间边界；内墙/半墙(墙心在共享
+    边界)内皮=边界±INT_T/2。旧版压条统一退边界 6cm，外墙侧离缝 6cm(用户反馈 M34)。
+    墙角对接：W/E 向条通长(端头嵌入垂直墙 5mm)，S/N 向条两端各让条厚、端面顶在
+    W/E 条前面——无离缝、无搭接、无共面顶面。
+    side_over: {'S'|'N'|'W'|'E': {'face':内皮,'from':起点,'to':终点,'butt':是否让位对接}}
+    crown=False 只做踢脚线（二楼斜顶无石膏线/灯槽）。"""
+    MOLD_H, BASE_H, DEP, EMB = 0.1, 0.12, 0.04, 0.005
+    gaps = door_gaps if door_gaps is not None else [
         ('x', 0, -3.75 - 0.55, -3.75 + 0.55), ('x', 0, 3.75 - 0.55, 3.75 + 0.55),
         ('z', 0, -3 - 0.7, -3 + 0.7), ('z', 0, 3 - 0.55, 3 + 0.55),
         ('z', -7.5, -2.5 - 0.6, -2.5 + 0.6),
     ]
-    def run(axis, at, from_, to_, y, h, depth, dirn, tag):
-        segs, cur = [], from_
-        gaps = sorted([g for g in DOOR_GAPS if g[0] == axis and abs(g[1] - at) < 0.14], key=lambda g: g[2])
-        for _, _, g0, g1 in gaps:
-            if g0 > cur: segs.append((cur, min(g0, to_)))
-            cur = max(cur, g1)
-        if cur < to_: segs.append((cur, to_))
+    over = side_over or {}
+
+    def strip(axis, at_face, dirn, a, b, y, h, depth, tag):
+        ln = b - a
+        if ln < 0.04:
+            return
+        off = at_face + dirn * (depth / 2 - EMB)   # 背面嵌入墙内皮 EMB
+        if axis == 'x':
+            reg(B(ln, h, depth, (a + b) / 2, y, off, M('trim'), f'{key}_{tag}', 0.004))
+        else:
+            reg(B(depth, h, ln, off, y, (a + b) / 2, M('trim'), f'{key}_{tag}', 0.004))
+
+    def side_run(skey, axis, bound, dirn, y, h, depth, tag):
+        o = over.get(skey, {})
+        at_face = o.get('face', faces[skey])
+        # 默认范围按墙内皮算：x 向条(S/N)两端让到 W/E 条前面对接；z 向条(W/E)通长、
+        # 端头嵌入垂直墙 5mm。内墙内皮≠边界，用边界算会与 W/E 条搭接出共面顶面。
+        if axis == 'x':
+            a0, b0 = fW + depth - EMB, fE - depth + EMB   # 对接量随条厚(石膏线0.06/踢脚线0.04)
+        else:
+            a0, b0 = fS - EMB, fN + EMB
+        a0, b0 = o.get('from', a0), o.get('to', b0)
+        segs, cur = [], a0
+        for g in sorted([g for g in gaps if g[0] == axis and abs(g[1] - bound) < 0.14],
+                        key=lambda g: g[2]):
+            if g[2] > cur:
+                segs.append((cur, min(g[2], b0)))
+            cur = max(cur, g[3])
+        if cur < b0:
+            segs.append((cur, b0))
         for i, (a, b) in enumerate(segs):
-            if b - a < 0.05: continue
-            mid, ln = (a + b) / 2, b - a
-            if axis == 'x':
-                reg(B(ln, h, depth, mid, y, at + dirn * (depth / 2 + 0.01), M('trim'), f'{key}_{tag}{i}', 0.004))
+            if axis == 'x' and o.get('butt', True):
+                strip(axis, at_face, dirn, a, b, y, h, depth, f'{tag}{i}')
+            elif axis == 'x':
+                strip(axis, at_face, dirn, a - EMB, b + EMB, y, h, depth, f'{tag}{i}')
             else:
-                reg(B(depth, h, ln, at + dirn * (depth / 2 + 0.01), y, mid, M('trim'), f'{key}_{tag}{i}', 0.004))
-    for side, (axis, at, dirn) in enumerate([
-            ('x', r['minZ'] + INSET, 1), ('x', r['maxZ'] - INSET, -1),
-            ('z', r['minX'] + INSET, 1), ('z', r['maxX'] - INSET, -1)]):
-        rng = (r['minX'], r['maxX']) if axis == 'x' else (r['minZ'], r['maxZ'])
-        run(axis, at, rng[0], rng[1], WALL_H - MOLD_H / 2 - 0.02, MOLD_H, 0.06, dirn, f'mold{side}')
-        run(axis, at, rng[0], rng[1], BASE_H / 2, BASE_H, 0.04, dirn, f'base{side}')
+                strip(axis, at_face, dirn, a, b, y, h, depth, f'{tag}{i}')
+
+    def _face(bound, dirn):
+        return bound + dirn * INT_T / 2 if abs(bound) < 0.01 else bound
+
+    fS, fN = _face(r['minZ'], +1), _face(r['maxZ'], -1)
+    fW, fE = _face(r['minX'], +1), _face(r['maxX'], -1)
+    faces = {'S': fS, 'N': fN, 'W': fW, 'E': fE}
+
+    sides = [
+        ('S', 'x', r['minZ'], +1), ('N', 'x', r['maxZ'], -1),
+        ('W', 'z', r['minX'], +1), ('E', 'z', r['maxX'], -1),
+    ]
+    yb = yBase + BASE_H / 2
+    for skey, axis, bound, dirn in sides:
+        side_run(skey, axis, bound, dirn, yb, BASE_H, DEP, 'base')
+    if not crown:
+        return
+    ym = yBase + WALL_H - MOLD_H / 2 - 0.02
+    for skey, axis, bound, dirn in sides:
+        side_run(skey, axis, bound, dirn, ym, MOLD_H, 0.06, 'mold')
     # 灯槽发光带（厨房北边灯槽避开楼梯井，不再横穿楼梯）
     in2 = 0.22
     cx, cz = (r['minX'] + r['maxX']) / 2, (r['minZ'] + r['maxZ']) / 2
     cove_edges = [
         ('x', r['maxX'] - r['minX'] - in2 * 2, cx, r['minZ'] + in2),
         ('x', r['maxX'] - r['minX'] - in2 * 2, cx, r['maxZ'] - in2),
-        ('z', r['maxZ'] - r['minZ'] - in2 * 2, r['minX'] + in2, cz),
-        ('z', r['maxZ'] - r['minZ'] - in2 * 2, r['maxX'] - in2, cz),
+        # z 向条：(跑向中心, 横向位置)——旧版两值写反，灯带被画进房间中央/屋外(M34 修复)
+        ('z', r['maxZ'] - r['minZ'] - in2 * 2, cz, r['minX'] + in2),
+        ('z', r['maxZ'] - r['minZ'] - in2 * 2, cz, r['maxX'] - in2),
     ]
     cove_skip = {'kitchen': [(0.0, 99.0)]}.get(r['id'])   # 厨房北边整条不做灯槽（楼梯井）
     for i, (axis, ln, pc, at) in enumerate(cove_edges):
@@ -1834,6 +1878,18 @@ def build_upper_v():
         f = PLANE(x1 - x0, z1 - z0, (x0 + x1) / 2, F2 + 0.021, (z0 + z1) / 2,
                   M('floor2_wood'), f'u_floor_{name}', uv_scale=((x1 - x0) / 1.2, (z1 - z0) / 1.2))
         reg(f)
+    # 二楼踢脚线（M34，用户反馈二楼缺失）：与一楼同规则——背面嵌墙内皮无缝、墙角对接；
+    # storage_a 北边是楼梯半墙(z 内皮 -4.5, 只到 x 6.45)，东条从半墙北面线起
+    f2_gaps = [('x', 0, -3.75 - 0.55, -3.75 + 0.55), ('x', 0, 3.75 - 0.55, 3.75 + 0.55),
+               ('z', 0, -3 - 0.55, -3 + 0.55), ('z', 0, 3 - 0.55, 3 + 0.55)]
+    for name, x0, x1, z0, z1 in f2rooms:
+        r2 = {'id': name, 'minX': x0, 'maxX': x1, 'minZ': z0, 'maxZ': z1}
+        over = {'S': {'face': -4.5, 'from': 0.1, 'to': 6.45, 'butt': False},
+                'E': {'from': -4.55}} if name == 'storage_a' else None
+        room_trim(f'trim2_{name}', r2, yBase=F2 + 0.021, door_gaps=f2_gaps, crown=False, side_over=over)
+    # 楼梯口东侧落平台（x 6.5..7.5, z -5.5..-4.55）北+东 L 形踢脚线
+    reg(B(0.96, 0.12, 0.04, 6.98, F2 + 0.021 + 0.06, -5.485, M('trim'), 'trim2_gateN', 0.004))
+    reg(B(0.04, 0.12, 0.91, 7.485, F2 + 0.021 + 0.06, -5.005, M('trim'), 'trim2_gateE', 0.004))
     # 楼梯井北侧的层间封带（F1墙顶2.9与F2墙底3.15之间的外墙空隙，
     # 覆盖整个楼梯井洞口 x 2.9..6.5，否则上楼梯左手边能看到一条缝）
     reg(B(3.75, 0.25, 0.24, 4.725, 3.025, -5.62, M('stucco_ext'), 'stairwell_band', 0.006))
