@@ -112,6 +112,18 @@ export class PlacementUI {
     this.piece = piece;
     this.openedPieceId = piece.def.id;
     this.interact.focusPiece(piece.def.id, aimedEntry);   // 联动开：柜门/盖子 + 瞄准的抽屉
+
+    // 精确瞄准且该条目只对应一个可用槽位（独立抽屉/单格门）：
+    // 跳过"选位置"直接进"选物品"——瞄准上抽屉就不该再看到下抽屉（2026-09-18 用户反馈）
+    if (aimedEntry && aimedEntry.slotKeys && aimedEntry.slotKeys.length === 1) {
+      const aimed = piece.slots.find(x => x.key === aimedEntry.slotKeys[0]);
+      if (aimed && !aimed.filledWith
+          && !(aimed.type === 'under' && !this.interact.revealable(piece.def.id, aimed.key))) {
+        this._chooseSlot(aimed);
+        return;
+      }
+    }
+
     this.stage = 'slot';
     this.slot = null;
     this.fpSlots = [];
