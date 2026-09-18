@@ -20,3 +20,4 @@ Desktop.ini
 # Node
 node_modules/
 .mimosa/
+__pycache__/
