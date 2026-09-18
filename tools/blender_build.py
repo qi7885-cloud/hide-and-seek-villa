@@ -1290,15 +1290,17 @@ def b_office_chair():
 
 def b_computer_case():
     # 空心机箱（侧板开门可见内部）+ 前面板/主板/风扇
+    # v2 玻璃侧板移到远离书桌一侧：书桌在主机世界 -x 侧，玻璃改 local -x（世界东），
+    # 主板/风扇随移到 +x 侧（透过玻璃可见）；铰链 rear 缘 → interact.js hinge [-0.1,...] open -2.1
     HOLLOW(0.2, 0.45, 0.45, 0, 0.225, 0, M('dark'), 'pc_body', t=0.015)
     reg(B(0.17, 0.42, 0.015, 0, 0.225, 0.213, M('dark'), 'pc_front', 0.004))
     reg(B(0.012, 0.3, 0.02, 0.06, 0.3, 0.225, M('led'), 'power_led', 0.002))
-    reg(B(0.02, 0.3, 0.28, -0.055, 0.25, 0.0, M('pc_glass'), 'mobo', 0.004))
+    reg(B(0.02, 0.3, 0.28, 0.055, 0.25, 0.0, M('pc_glass'), 'mobo', 0.004))
     fan = CYL(0.06, 0.015, 0.04, 0.32, -0.17, M('steel_dark'), 'fan', 16)
     fan.rotation_euler = (math.pi / 2, 0, 0); _apply(fan); reg(fan)
-    reg(join([B(0.015, 0.4, 0.4, 0.1075, 0.23, 0, M('pc_glass'), 'p', 0.004),
-              B(0.03, 0.02, 0.02, 0.11, 0.23, 0.19, M('dark'), 'h')], 'part_sidePanel'))
-    reg(B(0.015, 0.4, 0.4, -0.1, 0.23, 0, M('dark'), 'sideL', 0.004))
+    reg(join([B(0.015, 0.4, 0.4, -0.1075, 0.23, 0, M('pc_glass'), 'p', 0.004),
+              B(0.03, 0.02, 0.02, -0.11, 0.23, 0.19, M('dark'), 'h')], 'part_sidePanel'))
+    reg(B(0.015, 0.4, 0.4, 0.1, 0.23, 0, M('dark'), 'sideL', 0.004))
 
 def b_monitor():
     reg(B(0.3, 0.03, 0.2, 0, 0.015, 0, M('dark'), 'foot', 0.008))

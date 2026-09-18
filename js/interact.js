@@ -54,7 +54,8 @@ const OPENABLE_DEFS = {
     { key: 'drawer', part: 'drawer', kind: 'slide', axis: 'z', open: 0.4 },
   ],
   computerCase: [
-    { key: 'inner', part: 'sidePanel', kind: 'hinge', hinge: [0.1, 0.23, -0.225], axis: 'y', open: 2.1 },
+    // v2 玻璃侧板在远离书桌一侧（local -x/世界东）：铰链 rear 缘随侧板镜像，前缘把手向外开取负角
+    { key: 'inner', part: 'sidePanel', kind: 'hinge', hinge: [-0.1, 0.23, -0.225], axis: 'y', open: -2.1 },
   ],
   toyChest: [
     { key: 'inner', part: 'lid', kind: 'hinge', hinge: [0, 0.36, -0.22], axis: 'x', open: -1.9 },

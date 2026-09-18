@@ -397,8 +397,8 @@ function computerCase() {
   const g = new THREE.Group(), P = {};
   box(g, 0.2, 0.45, 0.45, C.dark, 0, 0.225, 0);
   box(g, 0.02, 0.3, 0.02, 0x6a7280, 0.06, 0.3, 0.23);            // 电源灯条
-  P.sidePanel = box(g, 0.015, 0.4, 0.4, 0x2b2e34, 0.1, 0.23, 0); // 侧板（M4可开）
-  box(g, 0.015, 0.4, 0.4, 0x2b2e34, -0.1, 0.23, 0);
+  P.sidePanel = box(g, 0.015, 0.4, 0.4, 0x2b2e34, -0.1, 0.23, 0); // 侧板（M4可开；v2 移到远离书桌一侧）
+  box(g, 0.015, 0.4, 0.4, 0x2b2e34, 0.1, 0.23, 0);
   return { group: g, parts: P };
 }
 
