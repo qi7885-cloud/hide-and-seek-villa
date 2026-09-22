@@ -21,6 +21,6 @@ Desktop.ini
 node_modules/
 .mimosa/
 __pycache__/
-server.js
+# server.js 需入库：GitHub 下载包靠它启动（线上由 _redirects/.assetsignore 屏蔽，不会外泄）
 HANDOFF.md
 tools/

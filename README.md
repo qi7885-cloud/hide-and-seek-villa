@@ -8,7 +8,7 @@
 
 **方式一（在线玩）**：打开 **https://hide-and-seek-villa.netlify.app** 即可（需电脑浏览器）。
 
-**方式二（本地玩）**：双击 `启动游戏.bat`，浏览器会自动打开游戏。
+**方式二（本地玩）**：从 GitHub 下载本仓库 zip 并解压，双击 `启动游戏.bat`，浏览器会自动打开游戏（需先安装 [Node.js](https://nodejs.org/zh-cn)，LTS 版即可）。
 
 **方式三（命令行）**：
 
