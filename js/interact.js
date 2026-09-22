@@ -80,9 +80,6 @@ const OPENABLE_DEFS = {
   carpetL: [
     { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.42, hinge: [0, 0, 0.9] },
   ],
-  rugB: [
-    { key: 'under', part: '__group', kind: 'lift', axis: 'x', open: -0.5, hinge: [0, 0, 0.5] },
-  ],
   bookshelf: [
     { key: 'books', part: 'books:*', kind: 'book' },
   ],

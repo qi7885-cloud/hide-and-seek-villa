@@ -59,11 +59,6 @@ export function rugTexture(wMeters, dMeters) {
   x.setLineDash([]);
   x.strokeStyle = '#9a8a70'; x.lineWidth = 2;
   x.strokeRect(30, 30, 196, 196);
-  // 四角小十字
-  x.lineWidth = 3;
-  for (const [px, py] of [[72, 72], [184, 72], [72, 184], [184, 184]]) {
-    x.beginPath(); x.moveTo(px - 8, py); x.lineTo(px + 8, py); x.moveTo(px, py - 8); x.lineTo(px, py + 8); x.stroke();
-  }
   const tex = toTexture(c, 1, 1);
   return tex;
 }

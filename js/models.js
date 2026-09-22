@@ -10,7 +10,7 @@ import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 const PIECE_MODEL = {
   sofa: 'sofa', sofa2: 'sofa',           // 一楼客厅+二楼休息区=新款法式圆扶手 v2（2026-09-17 用户要求统一）
   coffeeTable: 'coffee_table', coffeeTable2: 'coffee_table',
-  carpetL: 'carpet', carpet2: 'carpet', rugB: 'rug_small',
+  carpetL: 'carpet', carpet2: 'carpet',
   tvCabinet: 'tv_cabinet', tv: 'tv',
   plant: 'plant', plant2: 'plant', floorLamp: 'floor_lamp', armchair: 'armchair',
   counter: 'counter', fridge: 'fridge', diningTable: 'dining_table',

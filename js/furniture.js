@@ -633,7 +633,7 @@ export const CATALOG = [
       { key: 'top', type: 'top', name: '桌面上', cap: [0.9, 0.2, 0.45], offset: [0, 0.475, 0] },
       { key: 'shelf', type: 'top', name: '隔板上', cap: [0.75, 0.12, 0.35], offset: [0, 0.175, 0] },
     ] },
-  { id: 'carpetL', name: '地毯', room: 'living', pos: [-4.7, 0, -1.7], rotY: 0, build: () => carpet(), collide: false,
+  { id: 'carpetL', name: '地毯', room: 'living', pos: [-5.3, 0, -1.825], rotY: 0, build: () => carpet(), collide: false,
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
   { id: 'tvCabinet', name: '电视柜', room: 'living', pos: [-5.75, 0, -5.23], rotY: 0, build: tvCabinet,
     slots: [
@@ -699,8 +699,6 @@ export const CATALOG = [
       { key: 'drawer1', type: 'drawer', name: '上抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.575, 0] },
       { key: 'drawer2', type: 'drawer', name: '下抽屉', cap: [0.74, 0.16, 0.32], offset: [0, 0.3, 0] },
     ] },
-  { id: 'rugB', name: '床边毯', room: 'bedroom', pos: [-4.3, 0, 2.6], rotY: 0, build: () => carpet(1.6, 1.0), collide: false,
-    slots: [{ key: 'under', type: 'under', name: '毯子下面', cap: [1.2, 0.018, 0.6], offset: [0, 0.008, 0] }] },
 
   // —— 书房 ——
   { id: 'desk', name: '书桌', room: 'study', pos: [3.75, 0, 5.09], rotY: Math.PI, build: desk,
@@ -735,7 +733,7 @@ export const CATALOG = [
       { key: 'top', type: 'top', name: '桌面上', cap: [0.9, 0.2, 0.45], offset: [0, 0.475, 0] },
       { key: 'shelf', type: 'top', name: '隔板上', cap: [0.75, 0.12, 0.35], offset: [0, 0.175, 0] },
     ] },
-  { id: 'carpet2', name: '地毯', room: 'lounge2', pos: [-4.7, 3.15, -1.7], rotY: 0, build: () => carpet(), collide: false,
+  { id: 'carpet2', name: '地毯', room: 'lounge2', pos: [-5.3, 3.15, -1.825], rotY: 0, build: () => carpet(), collide: false,
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
   { id: 'bookshelf2', name: '书架', room: 'lounge2', pos: [-7.28, 3.15, -1.4], rotY: Math.PI / 2, build: bookshelf,
     slots: [
