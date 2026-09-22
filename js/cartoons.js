@@ -462,11 +462,11 @@ export function addWallCartoons(villaRoot) {
     [-4.62, 1.62, 0.40, 0.30, 'rocket'],
   ];
   for (const [x, y, w, h, kind] of frames) addPlane(villaRoot, 'art_' + kind, [x, y, -0.122], Math.PI, w, h, kind);
-  // 白色护墙板空框（GLB 实测框内净空 2.53×1.032，画填满内缘不留白）
+  // 白色护墙板空框（GLB 实测各框内缘：wp2 2.53 / wp3、wp4 2.13 / wp5 1.53，高统一 1.032，画填满内缘不留白）
   addPlane(villaRoot, 'art_boat', [-1.7, 1.5, -0.072], Math.PI, 2.53, 1.032, 'boat');        // wp2 客厅隔墙
-  addPlane(villaRoot, 'art_bird', [-5.8, 1.5, 5.425], Math.PI, 2.53, 1.032, 'bird');         // wp3 卧室南墙西
-  addPlane(villaRoot, 'art_moon', [-1.7, 1.5, 5.425], Math.PI, 2.53, 1.032, 'moon');         // wp4 卧室南墙东
-  addPlane(villaRoot, 'art_icecream', [-7.425, 1.5, 1.4], Math.PI / 2, 2.53, 1.032, 'icecream'); // wp5 卧室西墙
+  addPlane(villaRoot, 'art_bird', [-5.8, 1.5, 5.425], Math.PI, 2.13, 1.032, 'bird');         // wp3 卧室南墙西
+  addPlane(villaRoot, 'art_moon', [-1.7, 1.5, 5.425], Math.PI, 2.13, 1.032, 'moon');         // wp4 卧室南墙东
+  addPlane(villaRoot, 'art_icecream', [-7.425, 1.5, 1.4], Math.PI / 2, 1.53, 1.032, 'icecream'); // wp5 卧室西墙
 
   // 二楼空白墙（避开窗/门/家具，互不重复）
   addFramedArt(villaRoot, 'art2_robot', [-5.9, 4.45, -5.478], 0, 'robot');                  // 二楼客厅北墙西段
