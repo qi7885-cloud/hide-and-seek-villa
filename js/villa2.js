@@ -12,8 +12,9 @@ let VISUALS = true;                 // false = 仅碰撞骨架（GLB 接管视�
 export function setUpperVisuals(v) { VISUALS = v; }
 
 function box(scene, colliders, cx, cy, cz, sx, sy, sz, m, opts = {}) {
+  let mesh = null;
   if (VISUALS) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
+    mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
     mesh.position.set(cx, cy, cz);
     mesh.castShadow = opts.castShadow !== false;
     mesh.receiveShadow = true;
@@ -22,7 +23,7 @@ function box(scene, colliders, cx, cy, cz, sx, sy, sz, m, opts = {}) {
   if (opts.collide !== false) {
     colliders.push({ minX: cx - sx / 2, maxX: cx + sx / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2, minY: cy - sy / 2, maxY: cy + sy / 2 });
   }
-  return null;
+  return mesh;
 }
 
 // 带开口的直墙（yBase 为墙底高度，o.h 为墙顶高度（相对 yBase），默认全高 WALL_H）

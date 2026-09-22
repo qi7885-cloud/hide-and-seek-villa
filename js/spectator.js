@@ -8,12 +8,15 @@ export class GodCamera {
     this.target = new THREE.Vector3(0, 0, 0);
     this.azimuth = Math.PI;        // 绕Y角
     this.polar = 0.95;             // 俯仰角（0=正上方偏）
-    this.dist = 15;
+    this.dist = 18.2;              // 与 60° 视场匹配（原 15 对应 70°），保持取景不变
     this.enabled = false;
     this.autoRotate = false;
   }
 
   update() {
+    // 单相机两用：俯瞰（菜单/过场）隐藏屋顶层 2 露出室内，交还第一人称时恢复
+    if (this.enabled) this.camera.layers.disable(2);
+    else this.camera.layers.enable(2);
     if (!this.enabled) return;
     if (this.autoRotate) this.azimuth += 0.0016;   // 菜单展示用慢速环绕
     const sinP = Math.sin(this.polar);

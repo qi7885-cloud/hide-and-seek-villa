@@ -1,8 +1,10 @@
 // cartoons.js — 一楼墙面简笔卡通画（CanvasTexture 运行时生成，GLB 无需重导出）
 // 挂画位置：
 //   pw0a~pw4a  客厅隔墙相片墙（沙发上方木相框内的原纯色板，隐藏后替换为卡通画）
-//   wp2~wp5    白色护墙板空框（wp1 已被相片墙占用，跳过）
-// 9 幅画各不重复。
+//   wp2/wp3/wp5 白色护墙板空框（wp1 已被相片墙占用；wp4 位于卧室衣柜后方，空框整体隐藏；
+//                wp3 与其画一起西移 0.2m，避开南窗窗帘；
+//                wp5 与其画一起移到一楼卧室床头正上方并抬高，避开床头板）
+// 8 幅一楼画各不重复。
 import * as THREE from 'three';
 
 const OUTLINE = '#41392e';
@@ -231,32 +233,6 @@ function bird(ctx, w, h) {
   star(ctx, 322, 88, 9, '#f5c542');
 }
 
-function moon(ctx, w, h) {
-  ctx.fillStyle = '#31405e';
-  ctx.fillRect(0, 0, w, h);
-  const cx = w / 2, cy = h / 2 + 6;
-  ctx.save();
-  pen(ctx);
-  ctx.fillStyle = '#f5e6a8';
-  ctx.beginPath();
-  ctx.arc(cx, cy, 74, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#31405e';
-  ctx.beginPath();
-  ctx.arc(cx + 34, cy - 20, 62, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-  ctx.fillStyle = '#f5e6a8';
-  circ(ctx, cx - 20, cy + 14, 6, '#f5e6a8', false);
-  circ(ctx, cx - 40, cy - 26, 5, '#f5e6a8', false);
-  circ(ctx, cx + 8, cy - 48, 4.5, '#f5e6a8', false);
-  star(ctx, 64, 66, 12, '#f5e6a8');
-  star(ctx, 318, 74, 10, '#f5e6a8');
-  star(ctx, 92, 218, 9, '#f5e6a8');
-  star(ctx, 300, 206, 12, '#f5e6a8');
-  star(ctx, 196, 40, 8, '#f5e6a8');
-}
-
 function icecream(ctx, w, h) {
   const cx = w / 2;
   pen(ctx);
@@ -392,27 +368,77 @@ function barbell(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(120, 246); ctx.lineTo(264, 246); ctx.stroke();
 }
 
-const DRAWINGS = { cat, house, fish, rocket, flower, boat, bird, moon, icecream, robot, whale, kite, dinosaur, barbell };
+const DRAWINGS = { cat, house, fish, rocket, flower, boat, bird, icecream, robot, whale, kite, dinosaur, barbell };
 
-function cartoonTexture(kind) {
+// 画稿固定 384×288；贴图按承载平面的真实宽高比生成，
+// 内容以设计稿外接框等比 contain（宽高独立缩放即为拉伸，故不采用）
+const DESIGN_W = 384, DESIGN_H = 288;
+const PAPER = '#fdf8ec';
+const PAPER_RGB = [253, 248, 236];
+const INSET = 0.08;    // 内容在绑定方向两端各留 8% 纸边
+const SS = 2;          // 超采样倍数（矢量重绘，非位图放大）
+const MAX_TEX = 2048;
+
+const boxCache = new Map();
+
+// 画稿按原生尺寸渲染一次，扫描内容外接框（外扩 2~3px 吸收抗锯齿）
+function contentBox(kind) {
+  if (boxCache.has(kind)) return boxCache.get(kind);
   const c = document.createElement('canvas');
-  c.width = 384;
-  c.height = 288;
+  c.width = DESIGN_W; c.height = DESIGN_H;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = kind === 'moon' ? '#31405e' : '#fdf8ec';
-  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
   pen(ctx);
-  DRAWINGS[kind](ctx, c.width, c.height);
+  DRAWINGS[kind](ctx, DESIGN_W, DESIGN_H);
+  const d = ctx.getImageData(0, 0, DESIGN_W, DESIGN_H).data;
+  let x0 = DESIGN_W, y0 = DESIGN_H, x1 = -1, y1 = -1;
+  for (let y = 0; y < DESIGN_H; y++) {
+    for (let x = 0; x < DESIGN_W; x++) {
+      const i = (y * DESIGN_W + x) * 4;
+      if (Math.abs(d[i] - PAPER_RGB[0]) > 6 ||
+          Math.abs(d[i + 1] - PAPER_RGB[1]) > 6 ||
+          Math.abs(d[i + 2] - PAPER_RGB[2]) > 6) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) { x0 = 0; y0 = 0; x1 = DESIGN_W - 1; y1 = DESIGN_H - 1; }
+  const b = { x0: x0 - 2, y0: y0 - 2, x1: x1 + 3, y1: y1 + 3 };
+  b.w = b.x1 - b.x0; b.h = b.y1 - b.y0;
+  boxCache.set(kind, b);
+  return b;
+}
+
+// w/h 为平面尺寸（米）：纸面铺满画心，内容等比缩放居中
+function cartoonTexture(kind, w, h) {
+  const b = contentBox(kind);
+  const k = Math.min(w * (1 - 2 * INSET) / b.w, h * (1 - 2 * INSET) / b.h); // 米/画稿像素
+  const cw = w * SS / k, ch = h * SS / k;
+  const lim = Math.min(1, MAX_TEX / Math.max(cw, ch));   // 超限时等比缩，不破坏宽高比
+  const c = document.createElement('canvas');
+  c.width = Math.max(64, Math.round(cw * lim));
+  c.height = Math.max(64, Math.round(ch * lim));
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.translate(c.width / 2 - (b.x0 + b.x1) / 2 * SS, c.height / 2 - (b.y0 + b.y1) / 2 * SS);
+  ctx.scale(SS, SS);
+  pen(ctx);
+  DRAWINGS[kind](ctx, DESIGN_W, DESIGN_H);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;   // 斜视看画为主，各向异性过滤减轻糊化
   return tex;
 }
 
 function addPlane(root, name, pos, rotY, w, h, kind) {
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(w, h),
-    new THREE.MeshStandardMaterial({ map: cartoonTexture(kind), roughness: 0.92 })
+    new THREE.MeshStandardMaterial({ map: cartoonTexture(kind, w, h), roughness: 0.92 })
   );
   mesh.name = name;
   mesh.position.set(...pos);
@@ -441,7 +467,7 @@ function addFramedArt(root, name, pos, rotY, kind, fw = 1.9, fh = 0.95) {
   mk(0.06, fh - 0.12, -fw / 2 + 0.03, 0);
   mk(0.06, fh - 0.12, fw / 2 - 0.03, 0);
   const art = new THREE.Mesh(new THREE.PlaneGeometry(fw - 0.10, fh - 0.10),
-    new THREE.MeshStandardMaterial({ map: cartoonTexture(kind), roughness: 0.92 }));
+    new THREE.MeshStandardMaterial({ map: cartoonTexture(kind, fw - 0.10, fh - 0.10), roughness: 0.92 }));
   art.position.z = 0.008;
   art.receiveShadow = true;
   g.add(art);
@@ -453,7 +479,16 @@ export function addWallCartoons(villaRoot) {
   if (!villaRoot) return;
   // 相片墙：隐藏原纯色板（GLB 中被木背板盖住本就不可见），卡通画贴在背板外表面
   // （背板 z -0.12..-0.09，画置 -0.122 置于其前 2mm，正面朝客厅即 -z）
-  villaRoot.traverse((o) => { if (/^pw[0-4]a$/.test(o.name)) o.visible = false; });
+  // wp4 白框（wp4_w0~w3，卧室南墙衣柜正后方）四根条整体隐藏：空框只露出上下沿，像未完工
+  // wp3 白框（卧室南墙西端）整体西移 WP3_DX：框东端原在 x-4.7，被南窗西侧窗帘（cur2_panel-1，x -4.81..-4.39）压住 11cm
+  // wp5 白框（卧室西墙）随画移到床头正上方：z 中心 1.4→3.2 对齐床中心（框宽 1.6 = 床头板 z 2.4..4.0），
+  // 再抬 WP5_DY：框底 0.963→1.063，高于床头板顶 0.95（原只差 1.3cm，站立视角会视觉相贴）
+  const WP3_DX = -0.2, WP5_DZ = 1.8, WP5_DY = 0.1;
+  villaRoot.traverse((o) => {
+    if (/^pw[0-4]a$/.test(o.name) || /^wp4_w[0-3]$/.test(o.name)) o.visible = false;
+    else if (/^wp3_w[0-3]$/.test(o.name)) o.position.x += WP3_DX;
+    else if (/^wp5_w[0-3]$/.test(o.name)) { o.position.z += WP5_DZ; o.position.y += WP5_DY; }
+  });
   const frames = [
     [-6.9, 1.72, 0.42, 0.52, 'cat'],
     [-6.3, 1.86, 0.30, 0.24, 'fish'],
@@ -462,11 +497,12 @@ export function addWallCartoons(villaRoot) {
     [-4.62, 1.62, 0.40, 0.30, 'rocket'],
   ];
   for (const [x, y, w, h, kind] of frames) addPlane(villaRoot, 'art_' + kind, [x, y, -0.122], Math.PI, w, h, kind);
-  // 白色护墙板空框（GLB 实测各框内缘：wp2 2.53 / wp3、wp4 2.13 / wp5 1.53，高统一 1.032，画填满内缘不留白）
+  // 白色护墙板空框（画布退入框槽 z 深处，尺寸=前层开口最小约束，避免浮在框前遮框）
+  // wp2 客厅隔墙单层框 2.53×1.032；wp3 卧室南墙双层框前开口 2.138×1.012(内衬唇 2.13)取 2.13；wp5 西墙同理取 1.53
+  // wp4（卧室南墙东）位于衣柜正后方，空置不挂画
   addPlane(villaRoot, 'art_boat', [-1.7, 1.5, -0.072], Math.PI, 2.53, 1.032, 'boat');        // wp2 客厅隔墙
-  addPlane(villaRoot, 'art_bird', [-5.8, 1.5, 5.425], Math.PI, 2.13, 1.032, 'bird');         // wp3 卧室南墙西
-  addPlane(villaRoot, 'art_moon', [-1.7, 1.5, 5.425], Math.PI, 2.13, 1.032, 'moon');         // wp4 卧室南墙东
-  addPlane(villaRoot, 'art_icecream', [-7.425, 1.5, 1.4], Math.PI / 2, 1.53, 1.032, 'icecream'); // wp5 卧室西墙
+  addPlane(villaRoot, 'art_bird', [-5.8 + WP3_DX, 1.5, 5.445], Math.PI, 2.13, 1.012, 'bird'); // wp3 卧室南墙西（随框西移）
+  addPlane(villaRoot, 'art_icecream', [-7.445, 1.5 + WP5_DY, 1.4 + WP5_DZ], Math.PI / 2, 1.53, 1.012, 'icecream'); // wp5 卧室西墙床头正上方
 
   // 二楼空白墙（避开窗/门/家具，互不重复）
   addFramedArt(villaRoot, 'art2_robot', [-5.9, 4.45, -5.478], 0, 'robot');                  // 二楼客厅北墙西段

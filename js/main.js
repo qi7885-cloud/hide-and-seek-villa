@@ -21,7 +21,7 @@ const container = document.getElementById('app');
 async function init() {
   const ctx = createScene(container);
   const { scene, camera, tickHandlers } = ctx;
-  camera.layers.enable(2);   // 主相机可见屋顶层（院内/院内视角）
+  camera.layers.enable(2);   // 屋顶层默认可见（第一人称）；菜单俯瞰时由 GodCamera 动态隐藏
 
   // ---- Blender 模型预加载（加载屏固定提示语）----
   await loadAllModels();

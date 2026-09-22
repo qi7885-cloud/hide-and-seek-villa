@@ -118,14 +118,14 @@ export class Game {
     if (s.reason === 'all_found') {
       title.textContent = '😢 对方把你的藏物全找到了！';
       detail.innerHTML = s.hides.map(h => foundSet.has(`${h.pieceId}:${h.slotKey}`)
-        ? `✅ 「${itemById(h.itemId).name}」在 ${nameOf(h.pieceId)} —— 被找到了`
+        ? `✅ 「${itemById(h.itemId)?.name ?? '?'}」在 ${nameOf(h.pieceId)} —— 被找到了`
         : `❌`).join('<br>');
     } else {
       title.textContent = '🎉 时间到！你的藏物守住了';
       detail.innerHTML = `对方只找到 ${s.foundCount}/${s.total} 件<br>` + s.hides.map(h =>
         foundSet.has(`${h.pieceId}:${h.slotKey}`)
-          ? `✅ 「${itemById(h.itemId).name}」（${nameOf(h.pieceId)}）被找到了`
-          : `❌ 「${itemById(h.itemId).name}」藏在 ${nameOf(h.pieceId)} —— 没被找到`).join('<br>');
+          ? `✅ 「${itemById(h.itemId)?.name ?? '?'}」（${nameOf(h.pieceId)}）被找到了`
+          : `❌ 「${itemById(h.itemId)?.name ?? '?'}」藏在 ${nameOf(h.pieceId)} —— 没被找到`).join('<br>');
     }
     document.getElementById('result-score').textContent = `联机单局 —— 对方找到 ${s.foundCount}/${s.total} 件`;
     document.getElementById('screen-online').classList.add('hidden');
@@ -209,13 +209,13 @@ export class Game {
     const allFound = (s.foundCount || 0) >= s.total;
     if (allFound) {
       title.textContent = '🎉 全部找到了！';
-      detail.innerHTML = s.hides.map(h => `✅ 「${itemById(h.itemId).name}」藏在 ${nameOf(h.pieceId)} 的${this._slotName(h)}`).join('<br>');
+      detail.innerHTML = s.hides.map(h => `✅ 「${itemById(h.itemId)?.name ?? '?'}」藏在 ${nameOf(h.pieceId)} 的${this._slotName(h)}`).join('<br>');
     } else {
       title.textContent = '⏰ 时间到！';
       detail.innerHTML = `只找到 ${s.foundCount}/${s.total} 件<br>` + s.hides.map(h =>
         foundSet.has(`${h.pieceId}:${h.slotKey}`)
-          ? `✅ 「${itemById(h.itemId).name}」被你找到了`
-          : `❌ 「${itemById(h.itemId).name}」藏在 ${nameOf(h.pieceId)} 的${this._slotName(h)}`).join('<br>');
+          ? `✅ 「${itemById(h.itemId)?.name ?? '?'}」被你找到了`
+          : `❌ 「${itemById(h.itemId)?.name ?? '?'}」藏在 ${nameOf(h.pieceId)} 的${this._slotName(h)}`).join('<br>');
     }
     document.getElementById('result-score').textContent = `联机单局 —— 找到 ${s.foundCount}/${s.total} 件`;
     document.getElementById('screen-online').classList.add('hidden');
@@ -346,13 +346,13 @@ export class Game {
       const used = this.settings.seekTime ? `用时 ${Math.round(this.settings.seekTime - this.timer)} 秒` : '不限时通关';
       title.textContent = '🎉 全部找到了！';
       detail.innerHTML = `${used}<br>` + this.targets.map(t =>
-        `「${itemById(t.itemId).name}」在 ${t.pieceName} 的${this._slotName(t)}`).join('<br>');
+        `「${itemById(t.itemId)?.name ?? '?'}」在 ${t.pieceName} 的${this._slotName(t)}`).join('<br>');
     } else {
       title.textContent = '⏰ 时间到！';
       detail.innerHTML = `只找到 ${foundN}/${this.targets.length} 件，藏家守住了秘密<br>` +
         this.targets.map(t => t.found
-          ? `✅ 「${itemById(t.itemId).name}」已被找到`
-          : `❌ 「${itemById(t.itemId).name}」藏在 ${t.pieceName} 的${this._slotName(t)}`).join('<br>');
+          ? `✅ 「${itemById(t.itemId)?.name ?? '?'}」已被找到`
+          : `❌ 「${itemById(t.itemId)?.name ?? '?'}」藏在 ${t.pieceName} 的${this._slotName(t)}`).join('<br>');
     }
     score.textContent = `比分 —— 找家 ${this.score.seeker} : ${this.score.hider} 藏家`;
     document.getElementById('screen-result').classList.remove('hidden');

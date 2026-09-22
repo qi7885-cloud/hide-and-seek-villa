@@ -20,8 +20,10 @@ export function createScene(container) {
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.45;   // 环境泛光减弱，避免室内过曝
 
+  // 竖直视场 60°（≈90° 水平）：室内视角更自然，斜视墙面时透视不过分夸张
+  // 若再调整，需同步 spectator.js 中 GodCamera.dist 以免菜单/揭晓取景变化
   const camera = new THREE.PerspectiveCamera(
-    70, window.innerWidth / window.innerHeight, 0.05, 200
+    60, window.innerWidth / window.innerHeight, 0.05, 200
   );
   camera.position.set(0, 3, 10);
   camera.lookAt(0, 1, 0);
