@@ -242,6 +242,8 @@ export class Game {
     this.placement.show();
     this._crosshair(true);
     this._banner(`第 ${this.round}/${this.settings.rounds} 回合 · 藏家第一视角布置`);
+    this._helpBar('【藏家】<b>WASD</b> 移动 <span class="hb-sep">|</span> <b>E</b> 选位置藏物品 '
+      + '<span class="hb-sep">|</span> <b>Tab</b> 完成 <span class="hb-sep">|</span> <b>Esc</b> 退出');
   }
 
   // ---- 藏家确认完成 ----

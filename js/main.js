@@ -49,6 +49,7 @@ async function init() {
   // ---- 玩家（找家第一人称）----
   const player = new FPPlayer(camera, ctx.renderer.domElement);
   player.teleport(villa.spawn.seeker.pos, villa.spawn.seeker.yaw);
+  scene.add(player.avatar);
   tickHandlers.push((dt) => player.update(dt, colliders));
 
   // ---- 交互系统 ----

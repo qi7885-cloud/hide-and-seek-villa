@@ -84,7 +84,10 @@ export function buildUpperFloor(scene, colliders) {
   // ---- 二楼外墙（每面一扇窗）----
   wall(scene, colliders, { axis: 'x', at: -5.5 - EXT_T / 2, from: -7.62, to: 7.62, yBase: F2, thickness: EXT_T, m: extMat, openings: [{ at: -3.75, w: 1.4, y0: 0.95, y1: 2.15, glass: true }] });
   wall(scene, colliders, { axis: 'x', at: 5.5 + EXT_T / 2, from: -7.62, to: 7.62, yBase: F2, thickness: EXT_T, m: extMat, openings: [{ at: 3.75, w: 1.4, y0: 0.95, y1: 2.15, glass: true }] });
-  wall(scene, colliders, { axis: 'z', at: -7.5 - EXT_T / 2, from: -5.5, to: 5.5, yBase: F2, thickness: EXT_T, m: extMat, openings: [{ at: -2.75, w: 1.4, y0: 0.95, y1: 2.15, glass: true }] });
+  wall(scene, colliders, { axis: 'z', at: -7.5 - EXT_T / 2, from: -5.5, to: 5.5, yBase: F2, thickness: EXT_T, m: extMat, openings: [{ at: -2.5, w: 4.0, y0: 0.12, y1: 2.78, glass: true }] });
+  // 落地窗碰撞屏障：wall 函数中玻璃 collide=false、下部墙仅 12cm 挡不住人，
+  // 补不可见碰撞体封住整个开口（地板到窗顶），防止玩家走出窗外
+  colliders.push({ minX: -7.5 - EXT_T, maxX: -7.5, minZ: -4.5, maxZ: -0.5, minY: F2, maxY: F2 + 2.78 });
   wall(scene, colliders, { axis: 'z', at: 7.5 + EXT_T / 2, from: -5.5, to: 5.5, yBase: F2, thickness: EXT_T, m: extMat, openings: [{ at: 2.75, w: 1.4, y0: 0.95, y1: 2.15, glass: true }] });
 
   // ---- 二楼内墙（十字 + 四门洞）----

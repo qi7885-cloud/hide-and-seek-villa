@@ -91,11 +91,102 @@ function trimHandrailAboveFloor(root3d) {
   hr.parent.add(seg);
 }
 
+// 二楼家庭厅西墙改落地窗：GLB 中原 u_wallW 墙段（小窗开口）+ u_winW 窗框/玻璃全部隐藏，
+// 重建带 4m 宽落地窗开口的墙段 + 玻璃 + 窗框。命名延续 _seg 数字后缀以复用 fixWallUVs。
+function patchUpperWestWindow(root3d) {
+  const F2 = 3.15, WALL_H = 2.9, EXT_T = 0.24;
+  const wallX = -7.5 - EXT_T / 2;
+  const zFrom = -5.5, zTo = 5.5;
+  const winZ0 = -4.5, winZ1 = -0.5, winY0 = 0.12, winY1 = 2.78;
+  const winCz = (winZ0 + winZ1) / 2, winW = winZ1 - winZ0;
+  const winCy = F2 + (winY0 + winY1) / 2, winH = winY1 - winY0;
+
+  let wallMat = null, frameMat = null;
+  const toHide = [];
+  root3d.traverse((o) => {
+    if (!o.isMesh) return;
+    if (/^u_wallW_seg\d+$/.test(o.name)) {
+      if (!wallMat) wallMat = o.material;
+      toHide.push(o);
+    } else if (/^u_winW_/.test(o.name)) {
+      if (!frameMat && /_(fb|ft|fl|fr|mullion)$/.test(o.name)) frameMat = o.material;
+      toHide.push(o);
+    }
+  });
+  for (const o of toHide) o.visible = false;
+  if (!wallMat) wallMat = new THREE.MeshStandardMaterial({ color: 0xe6ddce, roughness: 0.88 });
+  if (!frameMat) frameMat = new THREE.MeshStandardMaterial({ color: 0x5c4630, roughness: 0.5 });
+  const glassMat = new THREE.MeshLambertMaterial({
+    color: 0xbfe3f2, transparent: true, opacity: 0.28, depthWrite: false,
+  });
+
+  const segs = [
+    [zFrom, winZ0, 0, WALL_H],
+    [winZ0, winZ1, 0, winY0],
+    [winZ0, winZ1, winY1, WALL_H],
+    [winZ1, zTo, 0, WALL_H],
+  ];
+  for (let i = 0; i < segs.length; i++) {
+    const [a, b, y0, y1] = segs[i];
+    if (b - a <= 0.002 || y1 - y0 <= 0.002) continue;
+    const mid = (a + b) / 2, sy = y1 - y0, cy = F2 + (y0 + y1) / 2;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(EXT_T, sy, b - a), wallMat);
+    mesh.name = `u_wallW_seg10${i}`;
+    mesh.position.set(wallX, cy, mid);
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    root3d.add(mesh);
+  }
+
+  const glass = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, winH - 0.1, winW - 0.1), glassMat);
+  glass.name = 'u_winW_glass_f2c';
+  glass.position.set(wallX, winCy, winCz);
+  root3d.add(glass);
+
+  const FT = 0.06, FD = EXT_T + 0.06;
+  const mk = (w, h, d, x, y, z, name) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat);
+    m.name = name;
+    m.position.set(x, y, z);
+    m.castShadow = false; m.receiveShadow = true;
+    root3d.add(m);
+  };
+  mk(FD, FT, winW + 0.06, wallX, F2 + winY0 + 0.03, winCz, 'u_winW_fb_f2c');
+  mk(FD, FT, winW + 0.06, wallX, F2 + winY1 - 0.03, winCz, 'u_winW_ft_f2c');
+  mk(FD, winH, FT, wallX, winCy, winZ0 + 0.03, 'u_winW_fl_f2c');
+  mk(FD, winH, FT, wallX, winCy, winZ1 - 0.03, 'u_winW_fr_f2c');
+  for (const z of [winCz - winW / 6, winCz + winW / 6]) {
+    mk(FD, winH - 0.1, 0.05, wallX, winCy, z, 'u_winW_mull_f2c');
+  }
+}
+
 function applyShadowRules(root3d) {
   root3d.traverse((o) => {
     if (!o.isMesh) return;
     o.receiveShadow = true;
     o.castShadow = !o.material?.transparent && !NO_CAST.test(o.name);
+  });
+}
+
+// 墙段 UV 按物理尺寸缩放：Blender 默认立方体 UV 为 0-1，墙被门窗分割成不同尺寸的段，
+// 同一张 256px 纹理被拉伸/压缩成不同密度，导致墙面颜色纹理不一致。
+// 按段的两条最大边长（墙长×墙高）缩放 UV，使纹纹理以每米一次的固定密度平铺。
+function fixWallUVs(root3d) {
+  root3d.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!/_seg\d+$/.test(o.name)) return;
+    const uv = o.geometry.attributes.uv;
+    if (!uv || uv.itemSize !== 2) return;
+    o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox;
+    const dims = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z]
+      .sort((a, b) => b - a);
+    const su = dims[0], sv = dims[1];
+    for (let i = 0; i < uv.count; i++) {
+      uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+    }
+    uv.needsUpdate = true;
   });
 }
 
@@ -164,6 +255,8 @@ export function staticModel(file) {
     });
     trimHandrailAboveFloor(root3d);
     patchStairwellBand(root3d);
+    patchUpperWestWindow(root3d);
+    fixWallUVs(root3d);
   }
   if (file === 'yard') {
     // yard.glb 的石板路只建了 4 块（path0~3），西门到门廊之间缺 3 块 —— 按原几何/材质补齐

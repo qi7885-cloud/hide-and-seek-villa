@@ -735,7 +735,7 @@ export const CATALOG = [
     ] },
   { id: 'carpet2', name: '地毯', room: 'lounge2', pos: [-5.3, 3.15, -1.825], rotY: 0, build: () => carpet(), collide: false,
     slots: [{ key: 'under', type: 'under', name: '地毯下面', cap: [2.2, 0.018, 1.4], offset: [0, 0.008, 0] }] },
-  { id: 'bookshelf2', name: '书架', room: 'lounge2', pos: [-7.28, 3.15, -1.4], rotY: Math.PI / 2, build: bookshelf,
+  { id: 'bookshelf2', name: '书架', room: 'lounge2', pos: [-2.0, 3.15, -0.22], rotY: 0, build: bookshelf,
     slots: [
       { key: 'shelf1', type: 'top', name: '第1层', cap: [0.8, 0.3, 0.22], offset: [0, 0.115, 0] },
       { key: 'shelf4', type: 'top', name: '第4层', cap: [0.8, 0.3, 0.22], offset: [0, 1.435, 0] },
