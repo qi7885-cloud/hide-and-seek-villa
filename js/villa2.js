@@ -78,7 +78,7 @@ export const F2_ROOMS = [
   { id: 'kids',    name: '儿童房', y: F2, minX: 0,    maxX: 7.5, minZ: 0,    maxZ: 5.5 },
 ];
 
-export function buildUpperFloor(scene, colliders) {
+export function buildUpperFloor(scene, colliders, camColliders = []) {
   const extMat = mat(0xe8e0d2), intMat = mat(0xf2ede4);
 
   // ---- 二楼外墙（每面一扇窗）----
@@ -135,6 +135,23 @@ export function buildUpperFloor(scene, colliders) {
   }
   const railBeam = box(scene, colliders, 3.85, 2.72, -4.53, Math.hypot(5.22, 3.15), 0.07, 0.07, mat(0x8a6a45), { collide: false });
   if (railBeam) railBeam.rotation.z = Math.atan2(3.15, 5.22); // 扶手斜梁（随坡度，纯装饰无碰撞）
+
+  // 扶手对相机是"看不见的障碍"：不在 colliders 里，弹簧臂会穿过去，把杆子横在画面里。
+  // 沿斜梁布一排"仅相机"碰撞段（玩家碰撞不受影响），弹簧臂会提前收臂避开它。
+  // GLB 里的扶手视觉与该线基本重合
+  {
+    const AX = 3.85 - 2.61, AY = 2.72 - 1.57;      // 斜梁两端（随 rotation.z 反推）
+    const BX = 3.85 + 2.61, BY = 2.72 + 1.57;
+    const N = 10, sx = (BX - AX) / N, sy = (BY - AY) / N;
+    for (let i = 0; i < N; i++) {
+      const cx = AX + (i + 0.5) * sx, cy = AY + (i + 0.5) * sy;
+      camColliders.push({
+        minX: cx - Math.abs(sx) / 2 - 0.08, maxX: cx + Math.abs(sx) / 2 + 0.08,
+        minY: cy - Math.abs(sy) / 2 - 0.08, maxY: cy + Math.abs(sy) / 2 + 0.08,
+        minZ: -4.53 - 0.14, maxZ: -4.53 + 0.14,
+      });
+    }
+  }
 
   // ---- 楼梯井南缘半墙（GLB 提供视觉；碰撞在此生成）——
   // 高1.35（比健身房器械略高，可探看楼梯井），仍防止从健身房跌落楼梯井；

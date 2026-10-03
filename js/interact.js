@@ -99,7 +99,8 @@ export class Interaction {
     this.onOnlineToast = null;    // 搜查提示文案
     this.player = player;
     this.raycaster = new THREE.Raycaster();
-    this.raycaster.far = 2.6;
+    this.raycaster.far = 7;      // 相机在角色身后3.4m：射程须覆盖“臂长+角色伸手距离”
+    this.reach = 2.4;            // 角色可交互半径（提示/E/R 键共用）
     this.openEntries = [];       // 所有开合动画条目
     this.openBySlotKey = {};     // pieceId:slotKey -> entry
     this._entryByNode = new Map(); // 开合部件节点 -> entry（准星判定用）
@@ -201,7 +202,7 @@ export class Interaction {
         // 联机找家：R 搜查当前家具的直查槽位（书页间走"抽书自动搜查"路径）
         if (this.hideMode || !this.enabled || this.inspecting || !this.onOnlineCheck) return;
         const hit = this._lastHit;
-        if (hit && hit.type === 'piece' && hit.dist < 2.5) this._onlineSearch(hit.piece);
+        if (hit && hit.type === 'piece') this._onlineSearch(hit.piece);
         return;
       }
       if (e.code === 'KeyQ') {
@@ -417,6 +418,14 @@ export class Interaction {
   }
 
   // ---------- 射线与提示 ----------
+  // 交互距离按"角色胸口→命中点"算：第三人称相机挂在角色身后 2m+，
+  // 若按相机距离判定，角色必须整个人贴上家具才够得着（旧版正是这个问题）
+  _playerDist(h) {
+    if (!this.player) return h.distance;
+    const p = this.player.pos;
+    return Math.hypot(h.point.x - p.x, h.point.y - (p.y + 1.0), h.point.z - p.z);
+  }
+
   _currentHit() {
     const cam = this.ctx.camera;
     this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
@@ -424,13 +433,15 @@ export class Interaction {
     const hits = this.raycaster.intersectObjects(targets, true);
     if (!hits.length) return null;
     const h = hits[0];
+    const dist = this._playerDist(h);
+    if (dist > this.reach) return null;   // 命中的是最近物体，它超出手臂范围即无可交互
     // 沿父链找归属
     let o = h.object;
     while (o) {
-      if (o.userData.isTargetItem) return { type: 'item', mesh: o, dist: h.distance, object: h.object };
+      if (o.userData.isTargetItem) return { type: 'item', mesh: o, dist, object: h.object };
       if (o.userData.pieceId) {
         const piece = this.pieces.find(p => p.def.id === o.userData.pieceId);
-        if (piece) return { type: 'piece', piece, dist: h.distance, object: h.object };
+        if (piece) return { type: 'piece', piece, dist, object: h.object };
       }
       o = o.parent;
     }
@@ -495,7 +506,7 @@ export class Interaction {
       return;
     }
     const hit = this._currentHit();
-    if (hit && hit.dist < 2.5) {
+    if (hit) {
       if (hit.type === 'item' && !this.hideMode) {
         text = `按 <b>E</b> 拿起「${itemById(hit.mesh.userData.itemId)?.name ?? '?'}」`;
       } else if (this.hideMode) {
@@ -589,7 +600,7 @@ export class Interaction {
     // 藏家藏匿模式：E 在家具上打开槽位面板；正对书本则直接打开那本书进入藏物
     if (this.hideMode) {
       const hit = this._lastHit;
-      if (hit && hit.type === 'piece' && hit.dist < 2.5) {
+      if (hit && hit.type === 'piece') {
         if (hit.piece.parts.books?.length) {
           const book = this.aimedBook(hit.piece);
           if (book && this.onHideBook) { this.onHideBook(hit.piece, book); return; }
@@ -610,7 +621,7 @@ export class Interaction {
       return;
     }
     const hit = this._lastHit;
-    if (!hit || hit.dist > 2.5) return;
+    if (!hit) return;
     if (hit.type === 'item') {
       if (this.onPickup) this.onPickup(hit.mesh.userData, hit.mesh);
       return;

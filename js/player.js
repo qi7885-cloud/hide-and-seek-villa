@@ -1,12 +1,13 @@
 // player.js — 第三人称控制器：WASD + 指针锁定鼠标视角 + 圆柱碰撞 + 角色模型跟随
 import * as THREE from 'three';
+import { buildCharacter } from './character.js';
 
 export class FPPlayer {
   constructor(camera, dom) {
     this.camera = camera;
     this.dom = dom;
     this.pos = new THREE.Vector3(0, 0, 0);   // 脚底位置
-    this.spawnPitch = -0.15;
+    this.spawnPitch = -0.06;                 // 默认俯仰：相机巡航高度保持在门楣(2.15)之下，过门不压臂
     this._maxPitch = 0.45;   // 仰视上限 ~26°，防止穿天花板
     this._minPitch = -0.6;   // 俯视下限 ~34°，防止穿地板
     this.yaw = 0;
@@ -19,8 +20,9 @@ export class FPPlayer {
     this.enabled = false;
     this.frozen = false;
     this.keys = {};
-    this._camDist = 2.2;
+    this._camDist = 3.4;     // 相机臂长：角色约占画面高度一半，太近会顶在后脑勺
     this._camHeight = 0.15;
+    this._aimOffset = 0;     // 视线基准=eyeHeight(1.62)：比1.36m的头顶高0.26m，准星悬浮在头顶前上方（旧版关系）
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
@@ -48,29 +50,10 @@ export class FPPlayer {
   }
 
   _buildAvatar() {
-    const g = new THREE.Group();
-    const skin = new THREE.MeshStandardMaterial({ color: 0xe8c099, roughness: 0.7 });
-    const cloth = new THREE.MeshStandardMaterial({ color: 0x3a6b8c, roughness: 0.8 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.85 });
-
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.42, 4, 8), cloth);
-    body.position.y = 0.75; g.add(body);
-
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), skin);
-    head.position.y = 1.22; g.add(head);
-
-    const mkLimb = (x, mat, y) => {
-      const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.3, 4, 6), mat);
-      m.position.set(x, y, 0); return m;
-    };
-    const legL = mkLimb(-0.09, dark, 0.32), legR = mkLimb(0.09, dark, 0.32);
-    g.add(legL, legR);
-    const armL = mkLimb(-0.27, cloth, 0.82), armR = mkLimb(0.27, cloth, 0.82);
-    g.add(armL, armR);
-
-    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    g.userData.legs = [legL, legR];
-    g.userData.arms = [armL, armR];
+    const g = buildCharacter();
+    this._rig = g.userData.rig;
+    this._gaitPhase = 0;   // 步态相位（按移动速度累加，快跑步频更高）
+    this._idleT = 0;       // 待机呼吸时间
     return g;
   }
 
@@ -79,6 +62,7 @@ export class FPPlayer {
     this.yaw = yaw;
     this.pitch = this.spawnPitch;
     this.vy = 0;
+    this._armDist = this._camDist;   // 传送后相机直接就位，不从旧位置滑过来
   }
 
   setLock(allowed) {
@@ -88,7 +72,7 @@ export class FPPlayer {
 
   update(dt, colliders) {
     if (this.frozen) return;
-    if (!this.enabled) { this._updateAvatar(); this._applyCamera(colliders); return; }
+    if (!this.enabled) { this._updateAvatar(false, 0, dt); this._applyCamera(dt, colliders); return; }
     const k = this.keys;
     let fx = 0, fz = 0;
     if (k['KeyW']) fz -= 1;
@@ -158,74 +142,147 @@ export class FPPlayer {
     }
 
     if (moving && this.vy === 0) this._bob = (this._bob || 0) + dt * (speed * 2.1);
-    this._updateAvatar(moving);
-    this._applyCamera(colliders);
+    this._updateAvatar(moving, speed, dt);
+    this._applyCamera(dt, colliders);
   }
 
-  _updateAvatar(moving) {
+  _updateAvatar(moving, speed = 0, dt = 0) {
     this.avatar.position.set(this.pos.x, this.pos.y, this.pos.z);
     this.avatar.rotation.y = this.yaw;
-    const swing = moving && this.vy === 0 ? Math.sin(this._bob || 0) * 0.35 : 0;
-    const [legL, legR] = this.avatar.userData.legs;
-    const [armL, armR] = this.avatar.userData.arms;
-    legL.rotation.x = swing; legR.rotation.x = -swing;
-    armL.rotation.x = -swing; armR.rotation.x = swing;
+
+    const rig = this._rig;
+    const grounded = this.vy === 0;
+    const runFactor = Math.min(1, speed / this.runSpeed);   // 0.6=步行 1=奔跑
+
+    // 步态相位按实际速度累加（跑动步频更高）；停止时摆动幅度平滑归零，切换不跳帧
+    if (moving && grounded) this._gaitPhase += dt * (4.4 + speed * 1.6);
+    this._idleT = (moving && grounded) ? 0 : (this._idleT || 0) + dt;
+    const targetAmp = (moving && grounded) ? 1 : 0;
+    this._amp = (this._amp || 0) + (targetAmp - (this._amp || 0)) * Math.min(1, dt * 9);
+    const amp = this._amp;
+    const idle = 1 - amp;
+    const t = this._gaitPhase;
+    const sL = Math.sin(t), sR = Math.sin(t + Math.PI);
+
+    // 腿：大腿前后摆 + 膝盖在迈步相（垂直过渡）弯曲
+    const thighA = 0.6 * amp * (0.55 + 0.45 * runFactor);
+    rig.legs[0].rotation.x = -sL * thighA;
+    rig.legs[1].rotation.x = -sR * thighA;
+    const kneeA = 0.92 * amp * (0.45 + 0.55 * runFactor);
+    rig.knees[0].rotation.x = Math.pow(Math.max(0, Math.cos(t)), 0.7) * kneeA;
+    rig.knees[1].rotation.x = Math.pow(Math.max(0, Math.cos(t + Math.PI)), 0.7) * kneeA;
+
+    // 臂：与同侧腿反相；手肘常弯、跑动弯更多；静止时自然垂坠微晃
+    const armA = 0.48 * amp * (0.55 + 0.45 * runFactor);
+    rig.arms[0].rotation.x = sL * armA;
+    rig.arms[1].rotation.x = sR * armA;
+    rig.arms[0].rotation.z = -0.1 - idle * Math.sin(this._idleT * 1.7) * 0.015;
+    rig.arms[1].rotation.z = 0.1 + idle * Math.sin(this._idleT * 1.7 + 1.3) * 0.015;
+    rig.elbows[0].rotation.x = -(0.3 + Math.max(0, -sL) * 0.5) * (0.4 + 0.6 * amp);
+    rig.elbows[1].rotation.x = -(0.3 + Math.max(0, -sR) * 0.5) * (0.4 + 0.6 * amp);
+
+    // 躯干：跑动前倾 + 迈步起伏；待机呼吸 + 缓慢环顾
+    rig.bodyRoot.rotation.x = -0.09 * runFactor * amp;
+    rig.bodyRoot.position.y = Math.abs(Math.cos(t)) * 0.045 * amp + idle * Math.sin(this._idleT * 1.9) * 0.008;
+    rig.headPivot.rotation.x = 0.05 * runFactor * amp + idle * Math.sin(this._idleT * 0.6) * 0.03;
+    rig.headPivot.rotation.y = idle * Math.sin(this._idleT * 0.43) * 0.14;
   }
 
-  _applyCamera(colliders) {
+  _applyCamera(dt, colliders) {
     // Spring Arm 球扫检测：从角色头部向相机理想方向发射带半径的射线，
     // 遇到墙/地板/天花板就缩短臂长，把相机放到碰撞点前
-    const anchorY = this.pos.y + this.eyeHeight + this._camHeight;
+    const aimY = this.pos.y + this.eyeHeight + this._aimOffset;   // 屏幕中心（准星）穿过的基准点
+    const anchorY = aimY + this._camHeight;
     const dist = this._camDist;
     const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
-    // 相机理想位置（背后+微俯视）
+    // 相机理想方向（背后+微俯视）
     const dx = sy * cp, dz = cy * cp, dy = -sp;
-    const idealX = this.pos.x + dx * dist;
-    const idealZ = this.pos.z + dz * dist;
-    const idealY = anchorY + dy * dist;
 
-    let actualDist = dist;
+    const probe = 0.12;   // 水平膨胀（原 0.2 会隔着门框就误拦）
+    const yPad = 0.06;    // 竖向膨胀收小：从门楣(2.15)下方过门时不被误拦
+    let nearby = null;
     if (colliders) {
-      const probe = 0.2;
+      // 合并"仅相机避让"碰撞（楼梯扶手等细长装饰）；玩家碰撞列表不受影响
+      const all = (this.camColliders && this.camColliders.length)
+        ? colliders.concat(this.camColliders) : colliders;
       // 只检测角色附近的 colliders（球扫范围 + 2m 余量），避免遍历全屋
       const range = dist + 2;
-      const nearby = colliders.filter(c =>
+      nearby = all.filter(c =>
         c.maxX > this.pos.x - range && c.minX < this.pos.x + range &&
         c.maxZ > this.pos.z - range && c.minZ < this.pos.z + range &&
         c.maxY > this.pos.y - 1 && c.minY < anchorY + range
       );
+    }
+    const hitAt = (sx, sy2, sz) => {
+      if (!nearby) return false;
+      for (const c of nearby) {
+        if (sx > c.minX - probe && sx < c.maxX + probe &&
+            sz > c.minZ - probe && sz < c.maxZ + probe &&
+            sy2 > c.minY - yPad && sy2 < c.maxY + yPad) return true;
+      }
+      return false;
+    };
+
+    let actualDist = dist;
+    if (nearby) {
       const steps = 16;
       let hitDist = dist;
       for (let i = 1; i <= steps; i++) {
         const f = (i / steps) * dist;
-        const px = this.pos.x + dx * f;
-        const py = anchorY + dy * f;
-        const pz = this.pos.z + dz * f;
-        let blocked = false;
-        for (const c of nearby) {
-          if (px > c.minX - probe && px < c.maxX + probe &&
-              pz > c.minZ - probe && pz < c.maxZ + probe &&
-              py > c.minY - probe && py < c.maxY + probe) {
-            blocked = true; break;
-          }
+        if (hitAt(this.pos.x + dx * f, anchorY + dy * f, this.pos.z + dz * f)) {
+          hitDist = f - probe;
+          break;
         }
-        if (blocked) { hitDist = f - probe; break; }
       }
       actualDist = Math.max(0.3, Math.min(dist, hitDist));
     }
 
-    // lerp 平滑过渡：避免碰撞切换时相机跳变
-    const tx = this.pos.x + dx * actualDist;
-    const ty = anchorY + dy * actualDist;
-    const tz = this.pos.z + dz * actualDist;
-    if (!this._camLerp) this._camLerp = { x: tx, y: ty, z: tz };
-    const l = Math.min(1, 0.25);
-    this._camLerp.x += (tx - this._camLerp.x) * l;
-    this._camLerp.y += (ty - this._camLerp.y) * l;
-    this._camLerp.z += (tz - this._camLerp.z) * l;
-    this.camera.position.set(this._camLerp.x, this._camLerp.y, this._camLerp.z);
-    this.camera.lookAt(this.pos.x, this.pos.y + this.eyeHeight, this.pos.z);
+    // 臂长平滑：小幅转动时收臂慢（过门/贴墙不猛拉近）、放臂快；
+    // 大幅甩动视角（>0.15rad/帧）时直接跳到受约束臂长——相机不做长距离滑移，
+    // 物理上就不会扫穿楼板/墙（闪现"穿过二楼地面"的根源）
+    const dAngle = this._prevDir
+      ? Math.acos(Math.min(1, Math.max(-1, this._prevDir.x * dx + this._prevDir.y * dy + this._prevDir.z * dz)))
+      : 0;
+    this._prevDir = { x: dx, y: dy, z: dz };
+    if (this._armDist === undefined || dAngle > 0.15) this._armDist = actualDist;
+    else {
+      const rate = actualDist < this._armDist ? 8 : 14;
+      this._armDist += (actualDist - this._armDist) * (1 - Math.exp(-(dt || 0.016) * rate));
+    }
+    const tx = this.pos.x + dx * this._armDist;
+    const ty = anchorY + dy * this._armDist;
+    const tz = this.pos.z + dz * this._armDist;
+    this.camera.position.set(tx, ty, tz);
+    this.camera.lookAt(this.pos.x, aimY, this.pos.z);
+
+    // 细长装饰杆（窗帘杆/楼梯扶手）贴近相机时淡出：
+    // 它们不在碰撞表里，靠得太近时会以大斜角切过整个画面（看起来像 bug）
+    if (this.rodMeshes && this.rodMeshes.length) {
+      const cx = this.camera.position.x, cy = this.camera.position.y, cz = this.camera.position.z;
+      for (const m of this.rodMeshes) {
+        if (!m.userData._rodBox) m.userData._rodBox = new THREE.Box3().setFromObject(m);
+        const bb = m.userData._rodBox;
+        const px = Math.max(bb.min.x, Math.min(cx, bb.max.x));
+        const py = Math.max(bb.min.y, Math.min(cy, bb.max.y));
+        const pz = Math.max(bb.min.z, Math.min(cz, bb.max.z));
+        const ddx = cx - px, ddy = cy - py, ddz = cz - pz;
+        const near = (ddx * ddx + ddy * ddy + ddz * ddz) < 1.2;   // 相机距杆 <1.1m
+        if (near && !m.userData._faded) {
+          m.userData._faded = true;
+          m.material.transparent = true;
+          m.material.opacity = 0.12;
+          m.material.depthWrite = false;
+          m.castShadow = false;
+        } else if (!near && m.userData._faded) {
+          m.userData._faded = false;
+          m.material.opacity = 1;
+          m.material.transparent = false;
+          m.material.depthWrite = true;
+          m.castShadow = true;
+        }
+      }
+    }
   }
 
   forwardDir() {

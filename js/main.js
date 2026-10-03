@@ -28,10 +28,11 @@ async function init() {
 
   // ---- 别墅：碰撞骨架由原代码生成（玩法不变），视觉交给 GLB ----
   const colliders = [];
+  const camColliders = [];              // 仅相机避让的碰撞（楼梯扶手等细长装饰）
   setVillaVisuals(false);
   setUpperVisuals(false);
   const villa = buildVilla(scene, colliders);
-  buildUpperFloor(scene, colliders);   // 二楼+楼梯+屋顶碰撞
+  buildUpperFloor(scene, colliders, camColliders);   // 二楼+楼梯+屋顶碰撞
   buildYard(scene, colliders);         // 庭院碰撞
   const villaGlb = staticModel('villa');
   const yardGlb = staticModel('yard');
@@ -48,6 +49,15 @@ async function init() {
 
   // ---- 玩家（找家第一人称）----
   const player = new FPPlayer(camera, ctx.renderer.domElement);
+  player.camColliders = camColliders;   // 相机弹簧臂额外避让（楼梯扶手等）
+  // 细长装饰杆（GLB：窗帘杆 cur*_rod / 楼梯扶手 handrail_trimmed）：
+  // 贴近相机时自动淡出，避免大斜角切过画面
+  const rodMeshes = [];
+  scene.traverse(o => {
+    if (o.isMesh && (/^cur\d+_rod$/.test(o.name) || o.name === 'handrail_trimmed')) rodMeshes.push(o);
+  });
+  for (const m of rodMeshes) m.material = m.material.clone();   // 材质独立，淡出互不影响
+  player.rodMeshes = rodMeshes;
   player.teleport(villa.spawn.seeker.pos, villa.spawn.seeker.yaw);
   scene.add(player.avatar);
   tickHandlers.push((dt) => player.update(dt, colliders));
