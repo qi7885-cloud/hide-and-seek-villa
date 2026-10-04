@@ -22,7 +22,7 @@ export class FPPlayer {
     this.keys = {};
     this._camDist = 3.4;     // 相机臂长：角色约占画面高度一半，太近会顶在后脑勺
     this._camHeight = 0.15;
-    this._aimOffset = 0;     // 视线基准=eyeHeight(1.62)：比1.36m的头顶高0.26m，准星悬浮在头顶前上方（旧版关系）
+    this._aimOffset = -0.15; // 视线基准≈1.47：准星贴着头顶（和平精英式越肩视角），不再高高悬浮
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
