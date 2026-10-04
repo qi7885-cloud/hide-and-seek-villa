@@ -7,7 +7,7 @@ export class FPPlayer {
     this.camera = camera;
     this.dom = dom;
     this.pos = new THREE.Vector3(0, 0, 0);   // 脚底位置
-    this.spawnPitch = -0.32;                 // 默认俯仰：准星落在人物前方 ~3.3m 的地面/家具上（低于身高）
+    this.spawnPitch = -0.22;  // 默认俯仰：和平精英行走微俯视（-12.6°），准星落在前方地面/家具上
     this._maxPitch = 0.45;   // 仰视上限 ~26°，防止穿天花板
     this._minPitch = -0.6;   // 俯视下限 ~34°，防止穿地板
     this.yaw = 0;
@@ -19,11 +19,10 @@ export class FPPlayer {
     this.enabled = false;
     this.frozen = false;
     this.keys = {};
-    this.camBack = 2.3;       // 相机在人物正后方距离
-    this.camSide = 1.1;       // 相机右侧偏移（操作者从侧边看，人物明显偏画面左侧）
-    this.camLift = 1.0;       // 相机高于地面（恒定，不随俯仰）
     this.pivotHeight = 1.05;  // 相机探测起点：角色胸口
-    this.aimAhead = 1.8;      // 准星点在人物正前方距离（中心线上）
+    this.armLength = 2.28;    // 水平臂长（俯仰越大视线越陡、相机越近）
+    this.camLift = 1.15;      // 相机恒定高度（不随俯仰升高——和平精英/三角洲式固定高度视向旋转）
+    this.shoulder = 0.55;     // 右肩偏移：人物偏画面左下，准星越肩指向前方地面/家具
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
@@ -190,20 +189,19 @@ export class FPPlayer {
   }
 
   _applyCamera(dt, colliders) {
-    // 准星钉在人物正前方（A = 前方 aimAhead、高 aimH 随俯仰升降），相机放在后侧方看 A：
-    // C = 人物 - F·camBack + R·camSide + up·camLift —— 操作者从侧边看，准星与人物中心对齐，
-    // 藏东西时低头即见柜子且不被人形挡住
+    // 和平精英/三角洲式行走视角（固定高度 + 视向旋转）：
+    // 相机 = 人物 - F·(arm·cos pitch) + R·shoulder + up·camLift（高度恒定，不随俯仰升高），
+    // 视线 = (pitch, yaw) 控制旋转——俯仰越大视线越陡，准星自然落在前方地面/家具上
+    // （低于人物身高），人物偏画面左下不挡准星
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     const fx = -sy, fz = -cy;            // 人物水平前方
     const rx = cy, rz = -sy;             // 人物右方
-    const aimH = Math.max(0.15, Math.min(2.1, this.pos.y + this.pivotHeight + this.pitch * 1.1));
-    const ax = this.pos.x + fx * this.aimAhead;
-    const ay = aimH;
-    const az = this.pos.z + fz * this.aimAhead;
-    // 相机理想位（人物后侧方）
-    const tx = this.pos.x - fx * this.camBack + rx * this.camSide;
-    const ty = this.pos.y + this.camLift;
-    const tz = this.pos.z - fz * this.camBack + rz * this.camSide;
+    const back = this.armLength * Math.cos(this.pitch);   // 水平后退（俯仰越陡越近）
+    const camY = this.pos.y + this.camLift;
+    // 相机理想位（后侧方，高度恒定）
+    const tx = this.pos.x - fx * back + rx * this.shoulder;
+    const ty = camY;
+    const tz = this.pos.z - fz * back + rz * this.shoulder;
 
     const probe = 0.12;   // 水平膨胀（原 0.2 会隔着门框就误拦）
     const yPad = 0.06;    // 竖向膨胀收小：从门楣(2.15)下方过门时不被误拦
@@ -213,7 +211,7 @@ export class FPPlayer {
       const all = (this.camColliders && this.camColliders.length)
         ? colliders.concat(this.camColliders) : colliders;
       // 只检测角色附近的 colliders（球扫范围 + 2m 余量），避免遍历全屋
-      const range = this.camBack + 2;
+      const range = this.armLength + 2;
       nearby = all.filter(c =>
         c.maxX > this.pos.x - range && c.minX < this.pos.x + range &&
         c.maxZ > this.pos.z - range && c.minZ < this.pos.z + range &&
@@ -263,7 +261,9 @@ export class FPPlayer {
       this._armDist += (actualLen - this._armDist) * (1 - Math.exp(-(dt || 0.016) * rate));
     }
     this.camera.position.set(px0 + ndx * this._armDist, py0 + ndy * this._armDist, pz0 + ndz * this._armDist);
-    this.camera.lookAt(ax, ay, az);
+    // 视线 = 控制旋转（yaw/pitch），不 lookAt 任何点——准星=屏幕中心射线
+    this.camera.rotation.order = 'YXZ';
+    this.camera.rotation.set(this.pitch, this.yaw, 0);
 
     // 细长装饰杆（窗帘杆/楼梯扶手）贴近相机时淡出：
     // 它们不在碰撞表里，靠得太近时会以大斜角切过整个画面（看起来像 bug）
