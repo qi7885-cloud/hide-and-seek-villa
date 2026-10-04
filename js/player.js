@@ -7,7 +7,7 @@ export class FPPlayer {
     this.camera = camera;
     this.dom = dom;
     this.pos = new THREE.Vector3(0, 0, 0);   // 脚底位置
-    this.spawnPitch = -0.22;  // 默认俯仰：和平精英行走微俯视（-12.6°），准星落在前方地面/家具上
+    this.spawnPitch = -0.15;  // 默认俯仰：微俯视（-8.6°），准星悬在人物头顶偏右、指向前方
     this._maxPitch = 0.45;   // 仰视上限 ~26°，防止穿天花板
     this._minPitch = -0.6;   // 俯视下限 ~34°，防止穿地板
     this.yaw = 0;
@@ -21,8 +21,8 @@ export class FPPlayer {
     this.keys = {};
     this.pivotHeight = 1.05;  // 相机探测起点：角色胸口
     this.armLength = 2.28;    // 水平臂长（俯仰越陡视线越陡、相机越近）
-    this.camLift = 1.15;      // 相机恒定高度（不随俯仰升高——和平精英/三角洲式固定高度视向旋转）
-    this.shoulder = 0;        // 右肩偏移=0：射线穿过人物中心线正前方（准星与人正前方对齐，窄家具正对即可命中）
+    this.camLift = 1.75;      // 相机恒定高度（头顶上方，不随俯仰升高——固定高度视向旋转）
+    this.shoulder = 0.55;     // 右肩偏移：准星悬在头顶偏右、视野右移（人物靠画面左侧）
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
