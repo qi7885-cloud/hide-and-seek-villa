@@ -20,9 +20,9 @@ export class FPPlayer {
     this.enabled = false;
     this.frozen = false;
     this.keys = {};
-    this._camDist = 3.4;     // 相机臂长：角色约占画面高度一半，太近会顶在后脑勺
+    this._camDist = 3.0;     // 臂长≈2.2倍身高（UE/Unity模板1.67倍量级），人物在画面里更有存在感
     this._camHeight = 0.15;
-    this._aimOffset = -0.15; // 视线基准≈1.47：准星贴着头顶（和平精英式越肩视角），不再高高悬浮
+    this._aimOffset = -0.32; // 视线基准≈1.30=角色眼睛高度（UE/Unity TPS 旋转枢轴在胸口/眼高，准星正对头部）
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
