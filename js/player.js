@@ -256,8 +256,11 @@ export class FPPlayer {
     const ty = pivotY + dy * this._armDist;
     const tz = this.pos.z + rz + dz * this._armDist;
     this.camera.position.set(tx, ty, tz);
-    // 视线沿臂方向看出去（越过右肩指向前方，不 lookAt 角色）
-    this.camera.lookAt(tx - dx, ty - dy, tz - dz);
+    // 准星点 = 人物正前方 aimAhead 处，高度随俯仰升降（低于身高）：
+    // 相机从侧后方看它，准星始终钉在正前方——藏东西时低头即见柜子，不被人形挡住
+    const aimAhead = 1.8;
+    const aimH = Math.max(0.15, Math.min(2.1, pivotY + this.pitch * 1.1));
+    this.camera.lookAt(this.pos.x - sy * aimAhead, aimH, this.pos.z - cy * aimAhead);
 
     // 细长装饰杆（窗帘杆/楼梯扶手）贴近相机时淡出：
     // 它们不在碰撞表里，靠得太近时会以大斜角切过整个画面（看起来像 bug）
