@@ -7,22 +7,21 @@ export class FPPlayer {
     this.camera = camera;
     this.dom = dom;
     this.pos = new THREE.Vector3(0, 0, 0);   // 脚底位置
-    this.spawnPitch = -0.06;                 // 默认俯仰：相机巡航高度保持在门楣(2.15)之下，过门不压臂
+    this.spawnPitch = -0.32;                 // 默认俯仰：准星落在人物前方 ~3.3m 的地面/家具上（低于身高）
     this._maxPitch = 0.45;   // 仰视上限 ~26°，防止穿天花板
     this._minPitch = -0.6;   // 俯视下限 ~34°，防止穿地板
     this.yaw = 0;
     this.pitch = this.spawnPitch;
     this.vy = 0;
     this.radius = 0.32;
-    this.eyeHeight = 1.62;
     this.walkSpeed = 3.1;
     this.runSpeed = 5.2;
     this.enabled = false;
     this.frozen = false;
     this.keys = {};
-    this._camDist = 3.0;     // 臂长≈2.2倍身高（UE/Unity模板1.67倍量级），人物在画面里更有存在感
-    this._camHeight = 0.15;
-    this._aimOffset = -0.32; // 视线基准≈1.30=角色眼睛高度（UE/Unity TPS 旋转枢轴在胸口/眼高，准星正对头部）
+    this._camDist = 3.0;      // 臂长≈2.2倍身高（UE/Unity模板量级）
+    this.pivotHeight = 1.05;  // 相机枢轴=角色胸口（UE/Unity TPS 枢轴在胸口不在头顶）
+    this.shoulder = 0.4;      // 右肩偏移：人物偏画面左侧，准星越肩指向前方地面/家具
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
@@ -189,15 +188,17 @@ export class FPPlayer {
   }
 
   _applyCamera(dt, colliders) {
-    // Spring Arm 球扫检测：从角色头部向相机理想方向发射带半径的射线，
-    // 遇到墙/地板/天花板就缩短臂长，把相机放到碰撞点前
-    const aimY = this.pos.y + this.eyeHeight + this._aimOffset;   // 屏幕中心（准星）穿过的基准点
-    const anchorY = aimY + this._camHeight;
+    // UE/Unity 式越肩 Spring Arm：枢轴在角色胸口，相机 = 枢轴 + 右肩偏移 + 臂方向 × 臂长，
+    // 视线沿臂方向看出去（不再 lookAt 角色）——准星自然落在人物前方的地面/家具上，
+    // 高度低于人物且被人形让开，藏东西时视野不被人形挡住
+    const pivotY = this.pos.y + this.pivotHeight;
     const dist = this._camDist;
     const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
-    // 相机理想方向（背后+微俯视）
+    // 臂方向（枢轴→相机）：背后 + 随俯仰升降（pitch 负=相机升高俯视）
     const dx = sy * cp, dz = cy * cp, dy = -sp;
+    // 右肩偏移（视向的水平右方）
+    const rx = cy * this.shoulder, rz = -sy * this.shoulder;
 
     const probe = 0.12;   // 水平膨胀（原 0.2 会隔着门框就误拦）
     const yPad = 0.06;    // 竖向膨胀收小：从门楣(2.15)下方过门时不被误拦
@@ -211,7 +212,7 @@ export class FPPlayer {
       nearby = all.filter(c =>
         c.maxX > this.pos.x - range && c.minX < this.pos.x + range &&
         c.maxZ > this.pos.z - range && c.minZ < this.pos.z + range &&
-        c.maxY > this.pos.y - 1 && c.minY < anchorY + range
+        c.maxY > this.pos.y - 1 && c.minY < pivotY + range
       );
     }
     const hitAt = (sx, sy2, sz) => {
@@ -224,13 +225,14 @@ export class FPPlayer {
       return false;
     };
 
+    // 探测线：从"枢轴+右肩偏移"沿臂方向到理想相机位
     let actualDist = dist;
     if (nearby) {
       const steps = 16;
       let hitDist = dist;
       for (let i = 1; i <= steps; i++) {
         const f = (i / steps) * dist;
-        if (hitAt(this.pos.x + dx * f, anchorY + dy * f, this.pos.z + dz * f)) {
+        if (hitAt(this.pos.x + rx + dx * f, pivotY + dy * f, this.pos.z + rz + dz * f)) {
           hitDist = f - probe;
           break;
         }
@@ -250,11 +252,12 @@ export class FPPlayer {
       const rate = actualDist < this._armDist ? 8 : 14;
       this._armDist += (actualDist - this._armDist) * (1 - Math.exp(-(dt || 0.016) * rate));
     }
-    const tx = this.pos.x + dx * this._armDist;
-    const ty = anchorY + dy * this._armDist;
-    const tz = this.pos.z + dz * this._armDist;
+    const tx = this.pos.x + rx + dx * this._armDist;
+    const ty = pivotY + dy * this._armDist;
+    const tz = this.pos.z + rz + dz * this._armDist;
     this.camera.position.set(tx, ty, tz);
-    this.camera.lookAt(this.pos.x, aimY, this.pos.z);
+    // 视线沿臂方向看出去（越过右肩指向前方，不 lookAt 角色）
+    this.camera.lookAt(tx - dx, ty - dy, tz - dz);
 
     // 细长装饰杆（窗帘杆/楼梯扶手）贴近相机时淡出：
     // 它们不在碰撞表里，靠得太近时会以大斜角切过整个画面（看起来像 bug）
