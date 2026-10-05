@@ -11,7 +11,7 @@ body { font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; col
 #hud #btn-exit { pointer-events: auto; }
 
 #crosshair {
-  position: absolute; left: 50%; top: 50%;
+  position: absolute; left: 50%; top: 51.5%;
   width: 14px; height: 14px; margin: -7px 0 0 -7px;
   border: 2px solid rgba(255,255,255,.85); border-radius: 50%;
   box-shadow: 0 0 4px rgba(0,0,0,.6);

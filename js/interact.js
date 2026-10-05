@@ -428,7 +428,7 @@ export class Interaction {
 
   _currentHit() {
     const cam = this.ctx.camera;
-    this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
+    this.raycaster.setFromCamera({ x: 0, y: -0.031 }, cam);
     const targets = this.pieces.map(p => p.group).concat(this.placedItems);
     const hits = this.raycaster.intersectObjects(targets, true);
     if (!hits.length) return null;
@@ -452,7 +452,7 @@ export class Interaction {
   // piece 省略时在所有书架上找（placement 书页间瞄准用）
   aimedBook(piece = null) {
     const cam = this.ctx.camera;
-    this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
+    this.raycaster.setFromCamera({ x: 0, y: -0.031 }, cam);
     const shelves = (piece && piece.parts.books?.length) ? [piece]
       : this.pieces.filter(p => p.parts.books?.length);
     for (const shelf of shelves) {
