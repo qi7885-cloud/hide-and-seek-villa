@@ -20,9 +20,8 @@ export class FPPlayer {
     this.frozen = false;
     this.keys = {};
     this.pivotHeight = 1.05;  // 相机探测起点：角色胸口
-    this.armLength = 2.28;    // 水平臂长（俯仰越陡视线越陡、相机越近）
-    this.camLift = 1.75;      // 相机恒定高度（头顶上方，不随俯仰升高——固定高度视向旋转）
-    this.shoulder = 1.0;      // 右肩偏移：和平精英同款越肩构图——人物在画面左下 1/3 处，准星与人物距离清晰可见
+    this.camBack = 2.2;       // 相机在人物正后方距离（中心线上）
+    this.camLift = 1.75;      // 相机高度（头顶上方，准星悬在头顶前上方——M35.9/10 已确认状态）
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
@@ -189,17 +188,14 @@ export class FPPlayer {
   }
 
   _applyCamera(dt, colliders) {
-    // 主流 TPS 自由准星（和平精英/三角洲同款）：相机 = 人物 - F·(arm·cos pitch) + R·shoulder + up·camLift，
-    // 视线 = (pitch, yaw) 控制旋转——准星（屏幕中心射线）可指向视野内任意位置：
-    // 低头打脚下/近处柜面，平视打远墙，抬头打柜顶/置物架，左右随偏航全向无锁
+    // 准星 = 屏幕中心射线（全向自由：脚下地面到远墙/天花板，恢复上一版的上下范围），
+    // 相机在人物正后方中心线上、头部上方（C = 人物 - F·camBack + up·camLift）
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     const fx = -sy, fz = -cy;            // 人物水平前方
-    const rx = cy, rz = -sy;             // 人物右方
-    const back = this.armLength * Math.cos(this.pitch);   // 水平后退（俯仰越陡相机越近）
-    // 相机理想位（后侧方，高度恒定）
-    const tx = this.pos.x - fx * back + rx * this.shoulder;
+    // 相机理想位（正后方中心线上）
+    const tx = this.pos.x - fx * this.camBack;
     const ty = this.pos.y + this.camLift;
-    const tz = this.pos.z - fz * back + rz * this.shoulder;
+    const tz = this.pos.z - fz * this.camBack;
 
     const probe = 0.12;   // 水平膨胀（原 0.2 会隔着门框就误拦）
     const yPad = 0.06;    // 竖向膨胀收小：从门楣(2.15)下方过门时不被误拦
@@ -209,7 +205,7 @@ export class FPPlayer {
       const all = (this.camColliders && this.camColliders.length)
         ? colliders.concat(this.camColliders) : colliders;
       // 只检测角色附近的 colliders（球扫范围 + 2m 余量），避免遍历全屋
-      const range = this.armLength + 2;
+      const range = this.camBack + 2;
       nearby = all.filter(c =>
         c.maxX > this.pos.x - range && c.minX < this.pos.x + range &&
         c.maxZ > this.pos.z - range && c.minZ < this.pos.z + range &&
@@ -259,7 +255,7 @@ export class FPPlayer {
       this._armDist += (actualLen - this._armDist) * (1 - Math.exp(-(dt || 0.016) * rate));
     }
     this.camera.position.set(px0 + ndx * this._armDist, py0 + ndy * this._armDist, pz0 + ndz * this._armDist);
-    // 视线 = 控制旋转（yaw/pitch），不 lookAt 任何点——准星=屏幕中心射线，全向自由
+    // 视线 = 俯仰/偏航控制旋转——准星（屏幕中心射线）全向自由
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.set(this.pitch, this.yaw, 0);
 
