@@ -22,7 +22,7 @@ export class FPPlayer {
     this.pivotHeight = 1.05;  // 相机探测起点：角色胸口
     this.armLength = 2.28;    // 水平臂长（俯仰越陡视线越陡、相机越近）
     this.camLift = 1.75;      // 相机恒定高度（头顶上方，不随俯仰升高——固定高度视向旋转）
-    this.shoulder = 0.55;     // 右肩偏移：越肩视角（OTS）——人物靠画面左侧，视线越过右肩，准星与人物距离可见
+    this.shoulder = 0.38;     // 右肩偏移：准星贴近人物头顶右前方（用户红圈位置），上下自由范围不变
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
