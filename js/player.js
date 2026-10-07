@@ -20,7 +20,8 @@ export class FPPlayer {
     this.frozen = false;
     this.keys = {};
     this.pivotHeight = 1.05;  // 相机探测起点：角色胸口
-    this.camBack = 2.2;       // 相机在人物正后方距离（中心线上）
+    this.camBack = 2.2;       // 相机在人物正后方距离
+    this.shoulder = 0.55;     // 右肩偏移：越肩视角——准星在头顶右前方，不被人形挡住
     this.camLift = 1.75;      // 相机高度（头顶上方，准星悬在头顶前上方——M35.9/10 已确认状态）
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
@@ -193,9 +194,10 @@ export class FPPlayer {
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     const fx = -sy, fz = -cy;            // 人物水平前方
     // 相机理想位（正后方中心线上）
-    const tx = this.pos.x - fx * this.camBack;
+    const rx = cy * this.shoulder, rz = -sy * this.shoulder;   // 人物右方 × 肩部偏移
+    const tx = this.pos.x - fx * this.camBack + rx;
     const ty = this.pos.y + this.camLift;
-    const tz = this.pos.z - fz * this.camBack;
+    const tz = this.pos.z - fz * this.camBack + rz;
 
     const probe = 0.12;   // 水平膨胀（原 0.2 会隔着门框就误拦）
     const yPad = 0.06;    // 竖向膨胀收小：从门楣(2.15)下方过门时不被误拦
