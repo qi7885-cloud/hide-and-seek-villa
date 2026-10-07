@@ -22,7 +22,7 @@ export class FPPlayer {
     this.pivotHeight = 1.05;  // 相机探测起点：角色胸口
     this.armLength = 2.28;    // 水平臂长（俯仰越陡视线越陡、相机越近）
     this.camLift = 1.75;      // 相机恒定高度（头顶上方，不随俯仰升高——固定高度视向旋转）
-    this.shoulder = 0.6;      // 右肩偏移：和平精英式越肩——人物靠画面左下，准星与前方家具完全让开，不被人形档住
+    this.shoulder = 1.0;      // 右肩偏移：和平精英同款越肩构图——人物在画面左下 1/3 处，准星与人物距离清晰可见
     this.avatar = this._buildAvatar();
     this.avatar.visible = true;
 
