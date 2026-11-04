@@ -191,9 +191,11 @@ function fixWallUVs(root3d) {
 }
 
 // 单个模型加载失败只跳过该模型（回退程序化建模），不拖垮整个游戏
-export async function loadAllModels() {
+// onProgress(done, total)：加载进度回调（main.js 接加载屏文案）
+export async function loadAllModels(onProgress = null) {
   const files = [...STATIC_MODEL, ...new Set(Object.values(PIECE_MODEL)),
     ...ITEM_IDS.map(id => `item_${id}`)];
+  let done = 0;
   const jobs = files.map(async (file) => {
     try {
       const scene3d = await loadFile(urlOf(file));
@@ -201,6 +203,9 @@ export async function loadAllModels() {
       masters.set(file, scene3d);
     } catch (err) {
       console.warn('[models] 加载失败，回退程序化建模:', urlOf(file));
+    } finally {
+      done++;
+      if (onProgress) onProgress(done, files.length);
     }
   });
   await Promise.all(jobs);

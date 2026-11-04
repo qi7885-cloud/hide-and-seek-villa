@@ -30,6 +30,10 @@ export class Game {
     this.online = { code: null, total: 0, deadline: null, nowOffset: 0, pollId: null, foundCount: 0 };
     this.onlineAction = null;   // screen-online 主按钮行为（由各流程设置）
 
+    // 每帧要摸的 DOM 引用一次性缓存（tick 每帧跑，避免反复 getElementById）
+    this._timerEl = document.getElementById('timer');
+    this._hintEl = document.getElementById('hint-chip');
+
     placement.onDone = () => this.confirmHide();
     placement.maxItems = this.settings.hideCount;
     interact.onPickup = (userData, mesh) => this.onItemFound(userData, mesh);
@@ -155,9 +159,15 @@ export class Game {
 
   // ---- 联机·找家：开始（或断线恢复）搜索 ----
   async guestStart(code) {
-    let st = await netStatus(code);
-    if (st.state === 'hidden') {
-      st = { ...st, ...(await netStartSeek(code)) };
+    let st;
+    try {
+      st = await netStatus(code);
+      if (st.state === 'hidden') {
+        st = { ...st, ...(await netStartSeek(code)) };
+      }
+    } catch (e) {
+      this.toast(e.message || '网络错误，请重试');   // 失败留在联机屏，可重试而不是卡死
+      return;
     }
     if (st.state !== 'seeking') { this.toast('该房间已经结束了'); this.quitToMenu(); return; }
     this.online.deadline = st.deadline;
@@ -270,7 +280,7 @@ export class Game {
     this._setPhase(Phase.COVER);
     document.getElementById('screen-cover').classList.remove('hidden');
     document.getElementById('cover-count').textContent =
-      `本回合共藏了 ${this.targets.length} 件物品，找家需要全部找出（限时 ${this.settings.seekTime ? this.settings.seekTime / 60 + ' 分钟' : '不限'}）`;
+      `本回合共藏了 ${this.targets.length} 件物品，找家需要全部找出（限时 ${this._fmtDur(this.settings.seekTime)}）`;
   }
 
   // ---- 找家开始搜索 ----
@@ -422,15 +432,15 @@ export class Game {
   // ---- 计时 + 冷热提示 ----
   tick(dt) {
     if (this.phase !== Phase.SEEK) return;
-    const tEl = document.getElementById('timer');
+    const tEl = this._timerEl;
     tEl.classList.remove('hidden');
     if (this.mode === 'guest') {
       // 联机找家：倒计时以服务端 deadline 为准（本地时钟已校准偏移）；联机不做冷热提示
-      if (!this.online.deadline) { tEl.textContent = '∞ 不限时'; return; }
+      if (!this.online.deadline) { this._setTimerText(tEl, '∞ 不限时'); return; }
       const remain = (this.online.deadline - (Date.now() - this.online.nowOffset)) / 1000;
       const m = Math.max(0, Math.floor(remain / 60));
       const s = Math.max(0, Math.floor(remain % 60));
-      tEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      this._setTimerText(tEl, `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
       tEl.classList.toggle('urgent', remain < 20);
       const secLeft = Math.ceil(remain);
       if (remain <= 10 && secLeft !== this._lastTick) { this._lastTick = secLeft; SFX.tick(); }
@@ -438,12 +448,12 @@ export class Game {
       return;
     }
     if (!this.settings.seekTime) {
-      tEl.textContent = '∞ 不限时';
+      this._setTimerText(tEl, '∞ 不限时');
     } else {
       this.timer -= dt;
       const m = Math.max(0, Math.floor(this.timer / 60));
       const s = Math.max(0, Math.floor(this.timer % 60));
-      tEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      this._setTimerText(tEl, `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
       tEl.classList.toggle('urgent', this.timer < 20);
       const secLeft = Math.ceil(this.timer);
       if (this.timer <= 10 && secLeft !== this._lastTick) { this._lastTick = secLeft; SFX.tick(); }
@@ -453,7 +463,7 @@ export class Game {
 
     // 冷热提示：指向最近的未找到物品
     this.hintCooldown -= dt;
-    const chip = document.getElementById('hint-chip');
+    const chip = this._hintEl;
     if (!this.settings.hints) { chip.classList.add('hidden'); return; }
     if (this.hintCooldown <= 0) {
       this.hintCooldown = 2.5;
@@ -476,6 +486,11 @@ export class Game {
         chip.classList.remove('hidden');
       }
     }
+  }
+
+  // 计时文本去重：同一秒内 60+ 帧不重复写 textContent（省 DOM 排版）
+  _setTimerText(tEl, text) {
+    if (tEl.textContent !== text) tEl.textContent = text;
   }
 
   _foundHud() {

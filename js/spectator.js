@@ -11,12 +11,17 @@ export class GodCamera {
     this.dist = 18.2;              // 与 60° 视场匹配（原 15 对应 70°），保持取景不变
     this.enabled = false;
     this.autoRotate = false;
+    this._layer2On = true;         // 主循环已 enable(2)，此处记录当前状态避免每帧重设
   }
 
   update() {
     // 单相机两用：俯瞰（菜单/过场）隐藏屋顶层 2 露出室内，交还第一人称时恢复
-    if (this.enabled) this.camera.layers.disable(2);
-    else this.camera.layers.enable(2);
+    if (this.enabled) {
+      if (this._layer2On) { this.camera.layers.disable(2); this._layer2On = false; }
+    } else if (!this._layer2On) {
+      this.camera.layers.enable(2);
+      this._layer2On = true;
+    }
     if (!this.enabled) return;
     if (this.autoRotate) this.azimuth += 0.0016;   // 菜单展示用慢速环绕
     const sinP = Math.sin(this.polar);

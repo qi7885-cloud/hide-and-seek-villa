@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from '../vendor/jsm/environments/RoomEnvironment.js';
 
 export function createScene(container) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // powerPreference：双显卡笔记本上优先独显，避免被省电策略分到核显
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 性能上限：像素比≤2
   renderer.shadowMap.enabled = true;

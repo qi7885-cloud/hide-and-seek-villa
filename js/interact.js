@@ -112,6 +112,10 @@ export class Interaction {
     this.enabled = false;        // 找家阶段才启用 E 交互
     this.hideMode = false;       // 藏家第一视角藏匿模式
     this.onHideInteract = null;  // 藏匿模式：E 瞄准家具回调(piece)
+    this._lastPromptText = null; // 提示条去重：文本没变不重写 DOM
+    // 射线目标缓存：pieces 固定不变，placedItems 每帧拼进复用数组（免 map/concat 分配）
+    this._pieceTargets = pieces.map(p => p.group);
+    this._rayTargets = [];
     this._buildOpenables();
     this._bindKeys();
     ctx.tickHandlers.push((dt) => this.update(dt));
@@ -429,7 +433,10 @@ export class Interaction {
   _currentHit() {
     const cam = this.ctx.camera;
     this.raycaster.setFromCamera({ x: 0, y: -0.031 }, cam);
-    const targets = this.pieces.map(p => p.group).concat(this.placedItems);
+    const targets = this._rayTargets;
+    targets.length = 0;
+    for (const g of this._pieceTargets) targets.push(g);
+    for (const m of this.placedItems) targets.push(m);
     const hits = this.raycaster.intersectObjects(targets, true);
     if (!hits.length) return null;
     const h = hits[0];
@@ -495,13 +502,19 @@ export class Interaction {
     });
   }
 
+  // 提示条统一出口：文本与上次相同则不重写 DOM（每帧调用，避免无谓的 innerHTML 排版）
+  _setPrompt(text) {
+    if (text === this._lastPromptText) return;
+    this._lastPromptText = text;
+    if (text) { this.promptEl.innerHTML = text; this.promptEl.classList.remove('hidden'); }
+    else this.promptEl.classList.add('hidden');
+  }
+
   _raycastPrompt() {
     if (!this.enabled && !this.hideMode) return;
     let text = null;
     if (!document.pointerLockElement) {
-      text = '点击画面锁定鼠标才能操作';
-      this.promptEl.innerHTML = text;
-      this.promptEl.classList.remove('hidden');
+      this._setPrompt('点击画面锁定鼠标才能操作');
       this._lastHit = null;
       return;
     }
@@ -550,8 +563,7 @@ export class Interaction {
         }
       }
     }
-    if (text) { this.promptEl.innerHTML = text; this.promptEl.classList.remove('hidden'); }
-    else this.promptEl.classList.add('hidden');
+    this._setPrompt(text);
     this._lastHit = hit;
   }
 
@@ -585,10 +597,9 @@ export class Interaction {
     cam.quaternion.slerpQuaternions(ins.fromQuat, ins.toQuat, k);
     const mesh = this.placedItems.find(m =>
       m.userData.pieceId === ins.pieceId && m.userData.slotKey === ins.slot.key);
-    this.promptEl.innerHTML = mesh
+    this._setPrompt(mesh
       ? `里面藏着「${itemById(mesh.userData.itemId).name}」！按 <b>E</b> 拿起`
-      : `${ins.slot.name}是空的 —— 按 <b>E</b> 退出`;
-    this.promptEl.classList.remove('hidden');
+      : `${ins.slot.name}是空的 —— 按 <b>E</b> 退出`);
   }
 
   _exitInspect() {

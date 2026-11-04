@@ -23,8 +23,11 @@ async function init() {
   const { scene, camera, tickHandlers } = ctx;
   camera.layers.enable(2);   // 屋顶层默认可见（第一人称）；菜单俯瞰时由 GodCamera 动态隐藏
 
-  // ---- Blender 模型预加载（加载屏固定提示语）----
-  await loadAllModels();
+  // ---- Blender 模型预加载（加载屏显示进度 n/total）----
+  const loadingTitle = document.querySelector('#loading h1');
+  await loadAllModels((n, total) => {
+    if (loadingTitle) loadingTitle.textContent = `加载游戏中 ${n}/${total}......`;
+  });
 
   // ---- 别墅：碰撞骨架由原代码生成（玩法不变），视觉交给 GLB ----
   const colliders = [];
@@ -97,7 +100,7 @@ async function init() {
   const _pickup = interact.onPickup;
   interact.onPickup = (u, m) => { SFX.pickup(); if (_pickup) _pickup(u, m); };
 
-  // ---- 菜单背后的环绕展示 ----
+  // ---- 初始状态：主菜单背后为环绕展示 ----
   godCam.enabled = true;
   godCam.autoRotate = true;
 

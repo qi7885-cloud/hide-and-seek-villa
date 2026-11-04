@@ -36,17 +36,24 @@ export class FPPlayer {
     this._onKeyUp = (e) => { this.keys[e.code] = false; };
     this._onLockChange = () => {
       this.enabled = document.pointerLockElement === this.dom;
+      if (!this.enabled) this.keys = {};   // 解锁即清键：防止解锁瞬间松键事件丢失导致角色滑步
     };
+    // 切出窗口（alt-tab）收不到 keyup，会一直"按着走"：失焦时清空按键
+    this._onBlur = () => { this.keys = {}; };
 
     document.addEventListener('mousemove', this._onMouseMove);
     document.addEventListener('keydown', this._onKeyDown);
     document.addEventListener('keyup', this._onKeyUp);
     document.addEventListener('pointerlockchange', this._onLockChange);
+    window.addEventListener('blur', this._onBlur);
     dom.addEventListener('click', () => {
       if (this.enabled || !this.canLock) return;
       this.dom.requestPointerLock();
     });
     this.canLock = true;
+    this._mergedColliders = null;   // colliders + camColliders 合并缓存（避免每帧 concat）
+    this._camCollidersRef = null;
+    this._nearScratch = [];         // 相机近邻碰撞复用数组（避免每帧 filter 分配）
   }
 
   _buildAvatar() {
@@ -95,15 +102,15 @@ export class FPPlayer {
     const STEP = 0.3, OVERLAP = 0.1;
     const feet = this.pos.y;
     let support = 0;
-    // 空间分区：只检测角色附近的 colliders
+    // 空间预筛（内联边界测试，不建中间数组）：只检测角色附近的 colliders
     const cr = this.radius + 0.3;
-    const nearbyCol = colliders.filter(c =>
-      c.maxX > this.pos.x - cr && c.minX < this.pos.x + cr &&
-      c.maxZ > this.pos.z - cr && c.minZ < this.pos.z + cr &&
-      c.maxY > feet - 0.5 && c.minY < feet + 2.5
-    );
+    const xLo = this.pos.x - cr, xHi = this.pos.x + cr;
+    const zLo = this.pos.z - cr, zHi = this.pos.z + cr;
+    const yLo = feet - 0.5, yHi = feet + 2.5;
     for (let pass = 0; pass < 2; pass++) {
-      for (const c of nearbyCol) {
+      for (const c of colliders) {
+        if (c.maxX <= xLo || c.minX >= xHi || c.maxZ <= zLo || c.minZ >= zHi ||
+            c.maxY <= yLo || c.minY >= yHi) continue;
         const nx = Math.max(c.minX, Math.min(this.pos.x, c.maxX));
         const nz = Math.max(c.minZ, Math.min(this.pos.z, c.maxZ));
         let dx = this.pos.x - nx, dz = this.pos.z - nz;
@@ -203,16 +210,23 @@ export class FPPlayer {
     const yPad = 0.06;    // 竖向膨胀收小：从门楣(2.15)下方过门时不被误拦
     let nearby = null;
     if (colliders) {
-      // 合并"仅相机避让"碰撞（楼梯扶手等细长装饰）；玩家碰撞列表不受影响
-      const all = (this.camColliders && this.camColliders.length)
-        ? colliders.concat(this.camColliders) : colliders;
-      // 只检测角色附近的 colliders（球扫范围 + 2m 余量），避免遍历全屋
+      // 合并"仅相机避让"碰撞（楼梯扶手等细长装饰）；玩家碰撞列表不受影响。
+      // 合并结果缓存复用（colliders/camColliders 构建后不再变化），避免每帧 concat
+      if (this._mergedColliders === null || this._camCollidersRef !== this.camColliders) {
+        this._mergedColliders = (this.camColliders && this.camColliders.length)
+          ? colliders.concat(this.camColliders) : colliders;
+        this._camCollidersRef = this.camColliders;
+      }
+      // 只检测角色附近的 colliders（球扫范围 + 2m 余量），结果写入复用数组避免每帧分配
       const range = this.camBack + 2;
-      nearby = all.filter(c =>
-        c.maxX > this.pos.x - range && c.minX < this.pos.x + range &&
-        c.maxZ > this.pos.z - range && c.minZ < this.pos.z + range &&
-        c.maxY > this.pos.y - 1 && c.minY < ty + range
-      );
+      const px = this.pos.x, pz = this.pos.z, py = this.pos.y;
+      nearby = this._nearScratch;
+      nearby.length = 0;
+      for (const c of this._mergedColliders) {
+        if (c.maxX > px - range && c.minX < px + range &&
+            c.maxZ > pz - range && c.minZ < pz + range &&
+            c.maxY > py - 1 && c.minY < ty + range) nearby.push(c);
+      }
     }
     const hitAt = (sx, sy2, sz) => {
       if (!nearby) return false;
@@ -303,5 +317,6 @@ export class FPPlayer {
     document.removeEventListener('keydown', this._onKeyDown);
     document.removeEventListener('keyup', this._onKeyUp);
     document.removeEventListener('pointerlockchange', this._onLockChange);
+    window.removeEventListener('blur', this._onBlur);
   }
 }
